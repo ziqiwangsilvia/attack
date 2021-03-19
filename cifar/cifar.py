@@ -59,7 +59,6 @@ def main(args):
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
     best_Acc = 0 
-    best_net = net
 
     for epoch in range(1, args['epoch'] + 1):
         train_acc = train(trainloader, net, criterion, optimizer, epoch, args)
@@ -71,8 +70,8 @@ def main(args):
             f.write('[epoch %d], test_accuracy is: %.5f\n' % (epoch, test_acc))
         if best_Acc < test_acc:
             best_Acc = test_acc 
-            best_net = net
-    return best_Acc, best_net, testloader, trainloader
+            torch.save(net.state_dict(), path + 'best_net_checkpoint.pt')
+    return best_Acc
 
 
 def train(train_loader, net, criterion, optimizer, epoch, args):
@@ -140,5 +139,5 @@ if __name__ == '__main__':
     elif args['conservative'] == 'center':
         path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
     check_mkdir(path)
-    best_acc, net, testloader, trainloader = main(hps)
-    torch.save(net.state_dict(), path + 'best_net_checkpoint.pt')
+    best_acc= main(hps)
+    
