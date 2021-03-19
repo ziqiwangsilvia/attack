@@ -23,7 +23,7 @@ hps = {'train_all': True,
        'num_classes': 10,
        'train_batch_size': 128,
        'test_batch_size': 100,
-       'epoch': 10,
+       'epoch': 200,
        'lr': 1e-3,
        'print_freq':1,
        'conservative': False,
@@ -37,7 +37,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--conservative', default=False, choices = [False, 'monotone', 'center'])
     parser.add_argument('--conservative_a', default= 0.05, type=float)
-    parser.add_argument('--epoch', default=10, type=int)
+    parser.add_argument('--epoch', default=200, type=int)
     args = parser.parse_args()
 
     return args
