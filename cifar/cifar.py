@@ -21,8 +21,8 @@ hps = {'train_all': True,
        'test_all': True,
        'test_index': [0,1],
        'num_classes': 10,
-       'train_batch_size': 32,
-       'test_batch_size': 16,
+       'train_batch_size': 128,
+       'test_batch_size': 100,
        'epoch': 10,
        'lr': 1e-3,
        'print_freq':1,
@@ -35,8 +35,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--conservative', default=False, choices = ['monotone', 'center'])
-    parser.add_argument('--conservative_a', default= 0.1, type=float)
+    parser.add_argument('--conservative', default=False, choices = [False, 'monotone', 'center'])
+    parser.add_argument('--conservative_a', default= 0.05, type=float)
     parser.add_argument('--epoch', default=10, type=int)
     args = parser.parse_args()
 
@@ -51,8 +51,9 @@ def main(args):
     testloader = torch.utils.data.DataLoader(testset, batch_size=args['test_batch_size'],
                                          shuffle=False, num_workers=1)
 
-    criterion = nn.NLLLoss()
-    optimizer = optim.Adam(net.parameters(), lr=args['lr'])
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(net.parameters(), lr=args['lr'],
+                      momentum=0.9, weight_decay=5e-4)
 
     best_Acc = 0 
     best_net = net

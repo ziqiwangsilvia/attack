@@ -23,7 +23,7 @@ class conservative_softmax(nn.Module):
             pos.append(nu[i]/sum(nu))
         pos = torch.stack(pos, 1)
         return pos
-    
+   
     
 class conservative_softmax_monotone(nn.Module): 
     def __init__(self, num_classes, a):
@@ -47,7 +47,7 @@ use_gpu = torch.cuda.is_available()
 class Net(nn.Module):
     def __init__(self, num_classes, conservative, a):
         super(Net, self).__init__()
-        self.vgg = torchvision.models.vgg16(num_classes = num_classes, pretrained=False)
+        self.net = torchvision.models.vgg16(num_classes = num_classes, pretrained=False)
         if not conservative:
             self.softmax = nn.Softmax()
         elif conservative == 'monotone':
@@ -56,6 +56,6 @@ class Net(nn.Module):
             self.softmax = conservative_softmax(num_classes, a)
 
     def forward(self, x):
-        z = self.vgg(x)
+        z = self.net(x)
         x = self.softmax(z)
         return x, z
