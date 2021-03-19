@@ -23,7 +23,7 @@ for item in conservative_a:
 #SBATCH --time=4:00:00
 #SBATCH --gres=gpu
 #SBATCH --mem=5000
-#SBATCH --workdir=/tudelft.net/staff-bulk/ewi/insy/VisionLab/ziqiwang/attack/cifar
+#SBATCH --chdir=/tudelft.net/staff-bulk/ewi/insy/VisionLab/ziqiwang/attack/cifar
 #SBATCH --job-name=attack""" + '\n'
 """#SBATCH --mail-type=END
 
