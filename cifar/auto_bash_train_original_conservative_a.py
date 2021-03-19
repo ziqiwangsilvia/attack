@@ -7,11 +7,12 @@ Created on Sat May 18 12:11:28 2019
 """
 from utils import check_mkdir
 import os
+import numpy as np
 
 path = 'jobs/conservative_a/'
 
 conservative = 'center'
-conservative_a = [0.01, 0.05, 0.1, 0.15, 0.2]
+conservative_a = [round(i, 2) for i in np.arange(0.05, 1.1, 0.05)]
 
 for item in conservative_a:
     path_item = path + str(item) + '/'
