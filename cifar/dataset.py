@@ -11,9 +11,14 @@ import torchvision
 import torchvision.transforms as transforms
 
 def prepare_dataset(train_all, train_index, test_all, test_index, mode):
-    transform = transforms.Compose(
-    [transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    transform_train = transforms.Compose([transforms.RandomCrop(32, padding=4),
+                                          transforms.RandomHorizontalFlip(),
+                                          transforms.ToTensor(),
+                                          transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
+
+    transform_test = transforms.Compose([transforms.ToTensor(),
+                                         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
+
 
     
     if not train_all:
@@ -25,7 +30,7 @@ def prepare_dataset(train_all, train_index, test_all, test_index, mode):
                 
     if mode == 'train':
         trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                        download=True, transform=transform)
+                                        download=True, transform=transform_train)
         if not train_all: 
             idx = torch.ByteTensor(len(trainset.targets))*0
             for i in train_index:
@@ -38,7 +43,7 @@ def prepare_dataset(train_all, train_index, test_all, test_index, mode):
     
     else:
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                       download=True, transform=transform)
+                                       download=True, transform=transform_test)
         if not test_all:
             idx = torch.ByteTensor(len(testset.targets))*0
             for i in test_index:
