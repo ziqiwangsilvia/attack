@@ -18,9 +18,9 @@ for item in conservative:
         with open(path_item + 'exp_%d.sh' %(exp), 'w') as f:
             f.write("""#!/bin/sh
 #SBATCH --partition=general --qos=short
-#SBATCH --time=2:00:00
+#SBATCH --time=4:00:00
 #SBATCH --gres=gpu
-#SBATCH --mem=50000
+#SBATCH --mem=5000
 #SBATCH --workdir=/tudelft.net/staff-bulk/ewi/insy/VisionLab/ziqiwang/attack/cifar
 #SBATCH --job-name=attack""" + '\n'
 """#SBATCH --mail-type=END
