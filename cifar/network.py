@@ -48,7 +48,7 @@ class Net(nn.Module):
     def __init__(self, num_classes, conservative, a):
         super(Net, self).__init__()
         self.net = torchvision.models.vgg16(num_classes = num_classes, pretrained=False)
-        if not conservative:
+        if conservative == 'False':
             self.softmax = nn.Softmax()
         elif conservative == 'monotone':
             self.softmax = conservative_softmax_monotone(num_classes, a)
