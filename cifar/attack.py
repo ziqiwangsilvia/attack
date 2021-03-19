@@ -6,6 +6,7 @@ Created on Fri Mar 19 11:45:53 2021
 @author: ziqi
 """
 
+import numpy as np
 import torch
 import torch.nn as nn
 import argparse
@@ -24,9 +25,10 @@ hps = {'train_all': True,
        'epoch': 10,
        'lr': 1e-3,
        'print_freq':1,
-       'conservative': False,
+       'conservative': 'False',
        'conservative_a': 0.1,
-       'attack': True,}
+       'attack': True,
+       'exp': 0}
 
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -34,9 +36,10 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--conservative', default=False, choices = ['monotone', 'center'])
+    parser.add_argument('--conservative', default='False', choices = ['False', 'center'])
     parser.add_argument('--conservative_a', default= 0.1, type=float)
     parser.add_argument('--attack', default=True, type = str2bool)
+    parser.add_argument('--exp', default=0, type=int)
     args = parser.parse_args()
 
     return args
@@ -53,9 +56,9 @@ def main(args):
     testloader = torch.utils.data.DataLoader(testset, batch_size=args['test_batch_size'],
                                          shuffle=False, num_workers=1)
 
-    for eps in range(0,1,0.05):
-        test_acc_attack= test(testloader, net, attack = True)
-        with open(path + 'attack_result_all.txt', 'w') as f:
+    for eps in np.arange(0,1,0.05):
+        test_acc_attack= test(testloader, net, eps)
+        with open(path + 'attack_result_all.txt', 'a') as f:
             f.write('acc at eps %.5f: %.5f' %(eps, test_acc_attack))
 
 
@@ -78,15 +81,15 @@ def test(test_loader, net, eps):
     net.eval()
     Acc_y = 0
     nb = 0
-    class_correct = list(0. for i in range(args['num_classes']))
-    class_total = list(0. for i in range(args['num_classes']))
+    class_correct = list(0. for i in range(hps['num_classes']))
+    class_total = list(0. for i in range(hps['num_classes']))
     
     for i, data in enumerate(test_loader):
         X, Y = data 
         X = Variable(X).to(device)
         Y = Variable(Y.squeeze()).to(device) 
         
-        loss = nn.NLLLoss()
+        loss = nn.CrossEntropyLoss()
         X = fgsm_attack(net, loss, X, Y, eps)
         nb = nb + len(X)
 
@@ -105,12 +108,12 @@ def test(test_loader, net, eps):
     test_acc = (nb - Acc_y)/nb 
     print('Accuracy:', test_acc)
     
-    for i in range(args['num_classes']):
-        print('Accuracy of %5s : %2d %%' % (
-            classes[i], 100 * class_correct[i] / (1e-8 + class_total[i])))
+    for i in range(hps['num_classes']):
+        print('at eps %.2f accuracy of %5s : %5f ' % (eps,
+            classes[i], class_correct[i] / (1e-8 + class_total[i])))
         with open(path + 'attack_result_per_class.txt', 'a') as f:
-            f.write('at eps %.5f accuracy of %5s : %2d %%' % (eps,
-                classes[i], 100 * class_correct[i] / (1e-8 + class_total[i])))
+            f.write('at eps %.5f accuracy of %5s : %5f \n' % (eps,
+                classes[i], class_correct[i] / (1e-8 + class_total[i])))
     #print("test acc: %.5f"%test_acc)
     return test_acc
 
@@ -127,5 +130,5 @@ if __name__ == '__main__':
         path = 'conservative_False/exp_' + str(args['exp']) + '/' 
     elif args['conservative'] == 'center':
         path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
-    check_mkdir(path)
+    #check_mkdir(path)
     main(hps)
