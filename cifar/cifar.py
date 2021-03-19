@@ -133,7 +133,10 @@ if __name__ == '__main__':
     for k in args.keys():
         hps[k] = args[k]
          
-    path = 'conservative_' + args['conservative'] + '/exp_' + str(args['exp']) + '/' 
+    if args['conservative'] == 'False':
+        path = 'conservative_False/exp_' + str(args['exp']) + '/' 
+    elif args['conservative'] == 'center':
+        path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
     check_mkdir(path)
     best_acc, net, testloader, trainloader = main(hps)
     torch.save(net.state_dict(), path + 'best_net_checkpoint.pt')
