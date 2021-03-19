@@ -12,7 +12,7 @@ from torch import optim
 from torch.autograd import Variable
 
 import argparse
-from utils import AverageMeter, str2bool
+from utils import AverageMeter, str2bool, check_mkdir
 from network import Net
 from dataset import prepare_dataset
 
@@ -23,11 +23,12 @@ hps = {'train_all': True,
        'num_classes': 10,
        'train_batch_size': 128,
        'test_batch_size': 100,
-       'epoch': 10,
+       'epoch': 200,
        'lr': 1e-3,
        'print_freq':1,
        'conservative': False,
-       'conservative_a': 0.1}
+       'conservative_a': 0.1,
+       'exp': 0}
 
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -35,9 +36,10 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--conservative', default=False, choices = [False, 'monotone', 'center'])
+    parser.add_argument('--conservative', default='False', choices = ['False', 'center'])
     parser.add_argument('--conservative_a', default= 0.05, type=float)
-    parser.add_argument('--epoch', default=10, type=int)
+    parser.add_argument('--epoch', default=200, type=int)
+    parser.add_argument('--exp', default=0, type=int)
     args = parser.parse_args()
 
     return args
@@ -57,12 +59,13 @@ def main(args):
 
     best_Acc = 0 
     best_net = net
+
     for epoch in range(1, args['epoch'] + 1):
         train_acc = train(trainloader, net, criterion, optimizer, epoch, args)
         test_acc= test(testloader, net)     
-        with open('cifar_train_accuracy.txt', 'a')as f:
+        with open(path + 'cifar_train_accuracy.txt', 'a')as f:
             f.write('[epoch %d], train_accuracy is: %.5f\n' % (epoch, train_acc))
-        with open('cifar_test_accuracy.txt', 'a')as f:
+        with open(path + 'cifar_test_accuracy.txt', 'a')as f:
             f.write('[epoch %d], test_accuracy is: %.5f\n' % (epoch, test_acc))
         if best_Acc < test_acc:
             best_Acc = test_acc 
@@ -130,5 +133,7 @@ if __name__ == '__main__':
     for k in args.keys():
         hps[k] = args[k]
          
+    path = 'conservative_' + args['conservative'] + '/exp_' + str(args['exp']) + '/' 
+    check_mkdir(path)
     best_acc, net, testloader, trainloader = main(hps)
-    torch.save(net.state_dict(), 'conservative' + str(hps['conservative']) + '_checkpoint.pt')
+    torch.save(net.state_dict(), path + 'best_net_checkpoint.pt')
