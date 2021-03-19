@@ -12,22 +12,21 @@ import argparse
 from torch.autograd import Variable
 from network import Net
 from dataset import prepare_dataset
-from utils import str2bool
+from utils import str2bool, check_mkdir
 
 hps = {'train_all': True,
        'train_index': [0,1],
        'test_all': True,
        'test_index': [0,1],
        'num_classes': 10,
-       'train_batch_size': 32,
-       'test_batch_size': 16,
+       'train_batch_size': 128,
+       'test_batch_size': 100,
        'epoch': 10,
        'lr': 1e-3,
        'print_freq':1,
        'conservative': False,
        'conservative_a': 0.1,
-       'attack': True,
-       'eps': 0.25}
+       'attack': True,}
 
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -38,7 +37,6 @@ def get_args():
     parser.add_argument('--conservative', default=False, choices = ['monotone', 'center'])
     parser.add_argument('--conservative_a', default= 0.1, type=float)
     parser.add_argument('--attack', default=True, type = str2bool)
-    parser.add_argument('--eps', default=0.007, type=float)
     args = parser.parse_args()
 
     return args
@@ -54,12 +52,10 @@ def main(args):
     testloader = torch.utils.data.DataLoader(testset, batch_size=args['test_batch_size'],
                                          shuffle=False, num_workers=1)
 
-    test_acc= test(testloader, net, args)  
-    with open('cifar_original_accuracy.txt', 'a')as f:
-        f.write('test_acc is: %.5f\n' % test_acc)
-    test_acc_attack= test(testloader, net, attack = True)
-    with open('cifar_attack_accuracy.txt', 'a')as f:
-        f.write('test_accuracy is: %.5f\n' % test_acc_attack)
+    for eps in range(0,1,0.05):
+        test_acc_attack= test(testloader, net, attack = True)
+        with open(path + 'attack_result_all.txt', 'w') as f:
+            f.write('acc at eps %.5f: %.5f' %(eps, test_acc_attack))
 
 
 def fgsm_attack(model, loss, images, labels, eps) :
@@ -77,7 +73,7 @@ def fgsm_attack(model, loss, images, labels, eps) :
     attack_images = images + eps*images.grad.sign()    
     return attack_images
 
-def test(test_loader, net, args):
+def test(test_loader, net, eps):
     net.eval()
     Acc_y = 0
     nb = 0
@@ -90,8 +86,7 @@ def test(test_loader, net, args):
         Y = Variable(Y.squeeze()).to(device) 
         
         loss = nn.NLLLoss()
-        if args['attack']:
-            X = fgsm_attack(net, loss, X, Y, args['eps'])
+        X = fgsm_attack(net, loss, X, Y, eps)
         nb = nb + len(X)
 
         outputs, _ = net(X)
@@ -108,9 +103,13 @@ def test(test_loader, net, args):
   
     test_acc = (nb - Acc_y)/nb 
     print('Accuracy:', test_acc)
+    
     for i in range(args['num_classes']):
         print('Accuracy of %5s : %2d %%' % (
             classes[i], 100 * class_correct[i] / (1e-8 + class_total[i])))
+        with open(path + 'attack_result_per_class.txt', 'a') as f:
+            f.write('at eps %.5f accuracy of %5s : %2d %%' % (eps,
+                classes[i], 100 * class_correct[i] / (1e-8 + class_total[i])))
     #print("test acc: %.5f"%test_acc)
     return test_acc
 
@@ -123,4 +122,9 @@ if __name__ == '__main__':
     for k in args.keys():
         hps[k] = args[k]
          
+    if args['conservative'] == 'False':
+        path = 'conservative_False/exp_' + str(args['exp']) + '/' 
+    elif args['conservative'] == 'center':
+        path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
+    check_mkdir(path)
     main(hps)

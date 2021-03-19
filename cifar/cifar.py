@@ -56,13 +56,15 @@ def main(args):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=args['lr'],
                       momentum=0.9, weight_decay=5e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
     best_Acc = 0 
     best_net = net
 
     for epoch in range(1, args['epoch'] + 1):
         train_acc = train(trainloader, net, criterion, optimizer, epoch, args)
-        test_acc= test(testloader, net)     
+        test_acc= test(testloader, net)   
+        scheduler.step()
         with open(path + 'cifar_train_accuracy.txt', 'a')as f:
             f.write('[epoch %d], train_accuracy is: %.5f\n' % (epoch, train_acc))
         with open(path + 'cifar_test_accuracy.txt', 'a')as f:
