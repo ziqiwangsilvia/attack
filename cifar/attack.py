@@ -43,6 +43,7 @@ def get_args():
 
 def main(args):
     net = Net(args['num_classes'], args['conservative'], args['conservative_a']).to(device)
+    net.load_state_dict(torch.load(path + 'best_net_checkpoint.pt'))
 # =============================================================================
 #     trainset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'train') 
 #     trainloader = torch.utils.data.DataLoader(trainset, batch_size=args['train_batch_size'],
