@@ -134,7 +134,7 @@ if __name__ == '__main__':
         path = 'tune_hps/conservative_a_' + str(args['conservative_a']) + \
                 '/lr_' + str(args['lr']) + '/tbs_' + str(args['train_batch_size']) + '/wd_' + str(args['weight_decay']) + '/'
          
-    if args['conservative'] == 'False':
+    elif args['conservative'] == 'False':
         path = 'conservative_False/exp_' + str(args['exp']) + '/' 
     elif args['conservative'] == 'center':
         path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
