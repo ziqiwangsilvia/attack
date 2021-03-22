@@ -21,7 +21,7 @@ hps = {'train_all': True,
        'test_all': True,
        'test_index': [0,1],
        'num_classes': 10,
-       'train_batch_size': 256,
+       'train_batch_size': 128,
        'test_batch_size': 100,
        'epoch': 200,
        'lr': 1e-3,
@@ -55,7 +55,7 @@ def main(args):
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=args['lr'],
-                      momentum=0.9, weight_decay=5e-6)
+                      momentum=0.9, weight_decay=5e-8)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
     best_Acc = 0 
