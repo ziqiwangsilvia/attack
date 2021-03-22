@@ -38,6 +38,10 @@ def get_args():
     parser.add_argument('--conservative', default='False', choices = ['False', 'center'])
     parser.add_argument('--conservative_a', default= 0.1, type=float)
     parser.add_argument('--exp', default=0, type=int)
+    parser.add_argument('--lr', default=1e-3, type=float)
+    parser.add_argument('--train_batch_size', default=256, type=int)
+    parser.add_argument('--weight_decay', default=5e-6, type=float)
+    parser.add_argument('--tune_hps', default=False, type=str2bool)
     args = parser.parse_args()
 
     return args
@@ -123,6 +127,10 @@ if __name__ == '__main__':
     args = vars(args)
     for k in args.keys():
         hps[k] = args[k]
+        
+    if args['tune_hps']:
+        path = 'tune_hps/conservative_a_' + str(args['conservative_a']) + \
+                '/lr_' + str(args['lr']) + '/tbs_' + str(args['train_batch_size']) + '/wd_' + str(args['weight_decay']) + '/'
          
     if args['conservative'] == 'False':
         path = 'conservative_False/exp_' + str(args['exp']) + '/' 
