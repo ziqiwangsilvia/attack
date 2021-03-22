@@ -9,6 +9,20 @@ import torch
 import torchvision
 import torch.nn as nn
 
+class Triangular(nn.Module):
+    def __init__(self):
+         super(Triangular, self).__init__()
+    def forward(self, input):
+        out = nn.functional.relu(input + 1) - 2 * nn.functional.relu(input) + nn.functional.relu(input - 1)
+        return out
+
+def convert_relu_to_triangular(model):
+    for child_name, child in model.named_children():
+        if isinstance(child, nn.ReLU):
+            setattr(model, child_name, Triangular())
+        else:
+            convert_relu_to_triangular(child)
+            
 class conservative_softmax(nn.Module): 
     def __init__(self, num_classes, a):
         super(conservative_softmax, self).__init__()
@@ -45,9 +59,11 @@ class conservative_softmax_monotone(nn.Module):
 use_gpu = torch.cuda.is_available()
 
 class Net(nn.Module):
-    def __init__(self, num_classes, conservative, a):
+    def __init__(self, num_classes, conservative, a, triangular):
         super(Net, self).__init__()
         self.net = torchvision.models.vgg16(num_classes = num_classes, pretrained=False)
+        if triangular:
+            convert_relu_to_triangular(self.net)
         if conservative == 'False':
             self.softmax = nn.Softmax()
         elif conservative == 'monotone':

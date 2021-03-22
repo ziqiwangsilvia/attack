@@ -27,7 +27,6 @@ hps = {'train_all': True,
        'print_freq':1,
        'conservative': 'False',
        'conservative_a': 0.1,
-       'attack': True,
        'exp': 0}
 
 classes = ('plane', 'car', 'bird', 'cat',
@@ -38,7 +37,6 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--conservative', default='False', choices = ['False', 'center'])
     parser.add_argument('--conservative_a', default= 0.1, type=float)
-    parser.add_argument('--attack', default=True, type = str2bool)
     parser.add_argument('--exp', default=0, type=int)
     args = parser.parse_args()
 
