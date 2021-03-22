@@ -56,10 +56,10 @@ def main(args):
     testloader = torch.utils.data.DataLoader(testset, batch_size=args['test_batch_size'],
                                          shuffle=False, num_workers=1)
 
-    for eps in np.arange(0,1,0.05):
+    for eps in np.arange(0,0.1,0.005):
         test_acc_attack= test(testloader, net, eps)
         with open(path + 'attack_result_all.txt', 'a') as f:
-            f.write('acc at eps %.2f: %.5f \n' %(eps, test_acc_attack))
+            f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
 
 
 def fgsm_attack(model, loss, images, labels, eps) :
@@ -109,10 +109,10 @@ def test(test_loader, net, eps):
     print('Accuracy:', test_acc)
     
     for i in range(hps['num_classes']):
-        print('at eps %.2f accuracy of %5s : %5f ' % (eps,
+        print('at eps %.5f accuracy of %5s : %5f ' % (eps,
             classes[i], class_correct[i] / (1e-8 + class_total[i])))
         with open(path + 'attack_result_per_class.txt', 'a') as f:
-            f.write('at eps %.2f accuracy of %5s : %5f \n' % (eps,
+            f.write('at eps %.5f accuracy of %5s : %5f \n' % (eps,
                 classes[i], class_correct[i] / (1e-8 + class_total[i])))
     #print("test acc: %.5f"%test_acc)
     return test_acc
