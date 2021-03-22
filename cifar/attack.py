@@ -42,12 +42,14 @@ def get_args():
     parser.add_argument('--train_batch_size', default=256, type=int)
     parser.add_argument('--weight_decay', default=5e-6, type=float)
     parser.add_argument('--tune_hps', default=False, type=str2bool)
+    parser.add_argument('--triangular', default=False, type=str2bool)
+    
     args = parser.parse_args()
 
     return args
 
 def main(args):
-    net = Net(args['num_classes'], args['conservative'], args['conservative_a']).to(device)
+    net = Net(args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
     net.load_state_dict(torch.load(path + 'best_net_checkpoint.pt'))
 # =============================================================================
 #     trainset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'train') 
