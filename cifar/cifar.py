@@ -25,6 +25,7 @@ hps = {'train_all': True,
        'test_batch_size': 100,
        'epoch': 200,
        'lr': 1e-3,
+       'weight_decay': 5e-6,
        'print_freq':1,
        'conservative': False,
        'conservative_a': 0.1,
@@ -40,6 +41,11 @@ def get_args():
     parser.add_argument('--conservative_a', default= 0.05, type=float)
     parser.add_argument('--epoch', default=200, type=int)
     parser.add_argument('--exp', default=0, type=int)
+    parser.add_argument('--lr', default=1e-3, type=float)
+    parser.add_argument('--train_batch_size', default=256, type=int)
+    parser.add_argument('--weight_decay', default=5e-6, type=float)
+    parser.add_argument('--tune_hps', default=False, type=str2bool)
+    
     args = parser.parse_args()
 
     return args
@@ -55,7 +61,7 @@ def main(args):
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=args['lr'],
-                      momentum=0.9, weight_decay=5e-8)
+                      momentum=0.9, weight_decay=args['weight_decay'])
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
     best_Acc = 0 
@@ -134,7 +140,10 @@ if __name__ == '__main__':
     for k in args.keys():
         hps[k] = args[k]
          
-    if args['conservative'] == 'False':
+    if args['tune_hps']:
+        path = 'tune_hps/conservative_a_' + str(args['conservative_a']) + \
+                '/lr_' + str(args['lr']) + '/tbs_' + str(args['train_batch_size']) + '/wd_' + str(args['weight_decay']) + '/'
+    elif args['conservative'] == 'False':
         path = 'conservative_False/exp_' + str(args['exp']) + '/' 
     elif args['conservative'] == 'center':
         path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 

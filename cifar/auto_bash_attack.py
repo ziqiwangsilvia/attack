@@ -53,7 +53,7 @@ for exp in range (0, 10):
     with open(path + 'exp_%d.sh' %(exp), 'w') as f:
         f.write("""#!/bin/sh
 #SBATCH --partition=general --qos=short
-#SBATCH --time=1:00:00
+#SBATCH --time=00:20:00
 #SBATCH --gres=gpu
 #SBATCH --mem=5000
 #SBATCH --chdir=/tudelft.net/staff-bulk/ewi/insy/VisionLab/ziqiwang/attack/cifar
