@@ -14,8 +14,8 @@ path = 'jobs/tune_hps/'
 check_mkdir(path)
 
 conservative = 'center'
-conservative_a = [round(i, 2) for i in np.arange(0.05, 1.1, 0.05)]
-lrs = [1e-5, 1e-4, 5e-4, 1e-3, 5e-3]
+conservative_a = [round(i, 2) for i in np.arange(0, 1.1, 0.1)]
+lrs = [1e-4, 5e-4, 1e-3, 5e-3]
 tbs = [128, 256, 512]
 wds = [5e-4, 5e-6, 5e-8]
 
@@ -31,7 +31,7 @@ for a in conservative_a:
 #SBATCH --gres=gpu
 #SBATCH --mem=7000
 #SBATCH --chdir=/tudelft.net/staff-bulk/ewi/insy/VisionLab/ziqiwang/attack/cifar
-#SBATCH --job-name=tune hps""" + '\n'
+#SBATCH --job-name=tune_hps""" + '\n'
 """#SBATCH --mail-type=END
 
 module use /opt/insy/modulefiles
@@ -43,3 +43,8 @@ srun python cifar.py --tune_hps=True --conservative=center --conservative_a=""" 
 """echo "Finished at $(date)"
 """
 )
+                            
+job_files = os.listdir(path)
+with open(path + 'jobfile_all.sh', 'w') as f:
+    for job in job_files:
+        f.write('sbatch %s\n' % job)
