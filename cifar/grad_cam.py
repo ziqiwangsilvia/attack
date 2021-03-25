@@ -72,9 +72,9 @@ class VGG(nn.Module):
         super(VGG, self).__init__()
         
         # get the pretrained VGG19 network
-        self.vgg = torchvision.models.vgg16(pretrained=True).to(device)
-        net = Net(args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
-        net.load_state_dict(torch.load(path + 'best_net_checkpoint.pt'))
+        #self.vgg = torchvision.models.vgg16(pretrained=True).to(device)
+        self.vgg = Net(args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
+        self.vgg.load_state_dict(torch.load(path + 'best_net_checkpoint.pt'))
         # disect the network to access its last convolutional layer
         self.features_conv = self.vgg.features[:30]
         
@@ -112,9 +112,9 @@ class VGG(nn.Module):
     def get_activations(self, x):
         return self.features_conv(x)
     
-def get_heatmap(img, label):    
+def get_heatmap(img, label, args):    
 # initialize the VGG model
-    vgg = VGG()
+    vgg = VGG(args)
     
     # set the evaluation mode
     vgg.eval()
@@ -176,13 +176,13 @@ def save_exp(heatmap, img, i):
     final = cv2.resize(superimposed_img, (128, 128))
     cv2.imwrite('./map_%d.jpg'%i, final)
 
-def main():
+def main(args):
     images, labels = next(iter(dataloader))
     images.to(device)
     labels.to(device)
     for i, (img, label) in enumerate(zip(images, labels)):
         img = img.unsqueeze(0)
-        heatmap = get_heatmap(img, label)
+        heatmap = get_heatmap(img, label, args)
         # create grid of images
         img_grid = torchvision.utils.make_grid(img)
         # show images
@@ -203,4 +203,4 @@ if __name__ == '__main__':
         path = 'conservative_False/exp_' + str(args['exp']) + '/' 
     elif args['conservative'] == 'center':
         path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
-    main()
+    main(hps)
