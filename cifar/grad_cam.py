@@ -123,7 +123,6 @@ def get_heatmap(img, label, args):
     # get the image from the dataloader
 
     # get the most likely prediction of the model
-    
     outputs = vgg(img)
     pos, pred = outputs.max(dim=1)
     print(label, pred)
@@ -144,7 +143,7 @@ def get_heatmap(img, label, args):
         activations[:, i, :, :] *= pooled_gradients[i]
         
     # average the channels of the activations
-    heatmap = torch.mean(activations, dim=1).squeeze()
+    heatmap = torch.mean(activations, dim=1).squeeze().cpu()
     
     # relu on top of the heatmap
     # expression (2) in https://arxiv.org/pdf/1610.02391.pdf
@@ -180,11 +179,9 @@ def save_exp(heatmap, img, i):
 
 def main(args):
     images, labels = next(iter(dataloader))
-    images.to(device)
-    labels.to(device)
     for i, (img, label) in enumerate(zip(images, labels)):
         img = img.unsqueeze(0)
-        heatmap = get_heatmap(img, label, args)
+        heatmap = get_heatmap(img.to(device), label, args)
         # create grid of images
         img_grid = torchvision.utils.make_grid(img)
         # show images
