@@ -123,6 +123,7 @@ def get_heatmap(img, label, args):
     # get the image from the dataloader
 
     # get the most likely prediction of the model
+    
     outputs = vgg(img)
     pos, pred = outputs.max(dim=1)
     print(label, pred)
