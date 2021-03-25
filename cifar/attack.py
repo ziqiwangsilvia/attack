@@ -140,5 +140,6 @@ if __name__ == '__main__':
         path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
 
     #check_mkdir(path)
+    hps['path'] = path
     main(hps)
 

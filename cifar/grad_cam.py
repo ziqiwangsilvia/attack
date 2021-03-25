@@ -18,6 +18,7 @@ import numpy as np
 import argparse
 from network import Net
 from utils import str2bool
+from attack import fgsm_attack
 
 
 hps = {'train_all': True,
@@ -113,10 +114,7 @@ class VGG(nn.Module):
     def get_activations(self, x):
         return self.features_conv(x)
     
-def get_heatmap(img, label, args):    
-# initialize the VGG model
-    vgg = VGG(args)
-    
+def get_heatmap(vgg, img, label, args):       
     # set the evaluation mode
     vgg.eval()
     
@@ -155,7 +153,7 @@ def get_heatmap(img, label, args):
     return heatmap
 
 
-def matplotlib_imshow(img, i, one_channel=False):
+def matplotlib_imshow(img, i, args, one_channel=False):
     if one_channel:
         img = img.mean(dim=0)
     img = img / 2 + 0.5     # unnormalize
@@ -166,27 +164,34 @@ def matplotlib_imshow(img, i, one_channel=False):
     else:
         plt.axis('off')
         plt.imshow(np.transpose(npimg, (1, 2, 0)))
-        plt.savefig('./test_%d.jpg'%i, bbox_inches='tight')
+        plt.savefig(args['path'] + 'test_%d_eps_%.2f.jpg'%(i, args['eps']), bbox_inches='tight')
         
-def save_exp(heatmap, img, i):
+def save_exp(heatmap, img, args, i):
     heatmap = cv2.resize(heatmap.numpy(), (img.shape[2], img.shape[3]))
     heatmap = np.uint8(255 * heatmap)
     img = np.uint8(255 * img.squeeze().resize(32, 32, 3).numpy())
     heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
     superimposed_img = heatmap * 1 + img*0
     final = cv2.resize(superimposed_img, (128, 128))
-    cv2.imwrite('./map_%d.jpg'%i, final)
+    cv2.imwrite(args['path'] + 'map_%d_eps_%.2f.jpg'%(i, args['eps']), final)
 
-def main(args):
-    images, labels = next(iter(dataloader))
-    for i, (img, label) in enumerate(zip(images, labels)):
-        img = img.unsqueeze(0)
-        heatmap = get_heatmap(img.to(device), label, args)
-        # create grid of images
-        img_grid = torchvision.utils.make_grid(img)
-        # show images
-        matplotlib_imshow(img_grid, i, one_channel=False)
-        save_exp(heatmap, img, i)
+def grad_cam(args):
+    vgg = VGG(args)
+    loss = nn.CrossEntropyLoss()
+    
+    for eps in np.arange(0,0.1,0.005):
+        args['eps'] = eps
+        images, labels = next(iter(dataloader))
+        for i, (img, label) in enumerate(zip(images, labels)):
+            img = img.unsqueeze(0)        
+            img_attack= fgsm_attack(vgg, loss, img, label, eps)        
+           
+            heatmap = get_heatmap(vgg, img_attack.to(device), label, args)
+            # create grid of images
+            img_grid = torchvision.utils.make_grid(img)
+            # show images
+            matplotlib_imshow(img_grid, i, args, one_channel=False)
+            save_exp(heatmap, img, args, i)
 
 if __name__ == '__main__':
     args = get_args()
@@ -202,4 +207,6 @@ if __name__ == '__main__':
         path = 'conservative_False/exp_' + str(args['exp']) + '/' 
     elif args['conservative'] == 'center':
         path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
-    main(hps)
+    hps['path'] = path()
+    hps['eps'] = 0
+    grad_cam(hps)
