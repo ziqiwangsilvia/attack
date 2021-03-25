@@ -76,14 +76,14 @@ class VGG(nn.Module):
         self.vgg = Net(args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
         self.vgg.load_state_dict(torch.load(path + 'best_net_checkpoint.pt'))
         # disect the network to access its last convolutional layer
-        self.features_conv = self.vgg.features[:30]
+        self.features_conv = self.vgg.net.features[:30]
         
         # get the max pool of the features stem
         self.max_pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
         self.avg_pool = nn.AdaptiveAvgPool2d(output_size=(7, 7))
         # get the classifier of the vgg19
-        self.classifier = self.vgg.classifier
-        
+        self.classifier = self.vgg.net.classifier
+        self.softmax = self.vgg.softmax
         # placeholder for the gradients
         self.gradients = None
     
@@ -102,6 +102,7 @@ class VGG(nn.Module):
         x = self.avg_pool(x)
         x = x.view((1, -1))
         x = self.classifier(x)
+        x = self.softmax(x)
         return x
     
     # method for the gradient extraction
