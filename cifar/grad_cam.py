@@ -102,9 +102,9 @@ class VGG(nn.Module):
         x = self.max_pool(x)
         x = self.avg_pool(x)
         x = x.view((1, -1))
-        x = self.classifier(x)
-        x = self.softmax(x)
-        return x
+        z = self.classifier(x)
+        out = self.softmax(z)
+        return out, z
     
     # method for the gradient extraction
     def get_activations_gradient(self):
@@ -183,7 +183,9 @@ def grad_cam(args):
         args['eps'] = eps
         images, labels = next(iter(dataloader))
         for i, (img, label) in enumerate(zip(images, labels)):
-            img = img.unsqueeze(0)        
+            img = img.unsqueeze(0).to(device)    
+            label = label.to(device)
+            print(img.shape, label.shape)    
             img_attack= fgsm_attack(vgg, loss, img, label, eps)        
            
             heatmap = get_heatmap(vgg, img_attack.to(device), label, args)
