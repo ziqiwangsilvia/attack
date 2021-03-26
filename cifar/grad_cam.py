@@ -184,7 +184,7 @@ def grad_cam(args):
         images, labels = next(iter(dataloader))
         for i, (img, label) in enumerate(zip(images, labels)):
             img = img.unsqueeze(0).to(device)    
-            label = label.to(device)
+            label = label.unsqueeze(0).to(device)
             print(img.shape, label.shape)    
             img_attack= fgsm_attack(vgg, loss, img, label, eps)        
            
