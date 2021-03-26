@@ -179,7 +179,7 @@ def grad_cam(args):
     vgg = VGG(args)
     loss = nn.CrossEntropyLoss()
     
-    for eps in np.arange(0,1,0.1):
+    for eps in np.arange(0,100,1):
         args['eps'] = eps
         images, labels = next(iter(dataloader))
         for i, (img, label) in enumerate(zip(images, labels)):
