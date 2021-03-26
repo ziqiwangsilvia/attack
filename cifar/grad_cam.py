@@ -207,6 +207,6 @@ if __name__ == '__main__':
         path = 'conservative_False/exp_' + str(args['exp']) + '/' 
     elif args['conservative'] == 'center':
         path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
-    hps['path'] = path()
+    hps['path'] = path
     hps['eps'] = 0
     grad_cam(hps)
