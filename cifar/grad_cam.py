@@ -141,7 +141,7 @@ def get_heatmap(vgg, img, label, args):
         activations[:, i, :, :] *= pooled_gradients[i]
         
     # average the channels of the activations
-    heatmap = torch.mean(activations, dim=1).squeeze().cpu()
+    heatmap = torch.mean(activations, dim=1).squeeze().detach().cpu()
     
     # relu on top of the heatmap
     # expression (2) in https://arxiv.org/pdf/1610.02391.pdf
@@ -157,7 +157,7 @@ def matplotlib_imshow(img, i, args, one_channel=False):
     if one_channel:
         img = img.mean(dim=0)
     img = img / 2 + 0.5     # unnormalize
-    npimg = img.cpu().numpy()
+    npimg = img.detach().cpu().numpy()
     if one_channel:
         plt.axis('off')
         plt.imshow(npimg, cmap="Greys")
@@ -167,9 +167,9 @@ def matplotlib_imshow(img, i, args, one_channel=False):
         plt.savefig(args['path'] + 'test_%d_eps_%.2f.jpg'%(i, args['eps']), bbox_inches='tight')
         
 def save_exp(heatmap, img, args, i):
-    heatmap = cv2.resize(heatmap.cpu().numpy(), (img.shape[2], img.shape[3]))
+    heatmap = cv2.resize(heatmap.numpy(), (img.shape[2], img.shape[3]))
     heatmap = np.uint8(255 * heatmap)
-    img = np.uint8(255 * img.squeeze().resize(32, 32, 3).cpu().numpy())
+    img = np.uint8(255 * img.squeeze().resize(32, 32, 3).detach().cpu().numpy())
     heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
     superimposed_img = heatmap * 1 + img*0
     final = cv2.resize(superimposed_img, (128, 128))
