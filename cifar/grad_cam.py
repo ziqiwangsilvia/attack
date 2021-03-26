@@ -121,7 +121,7 @@ def get_heatmap(vgg, img, label, args):
     # get the image from the dataloader
 
     # get the most likely prediction of the model
-    outputs = vgg(img)
+    outputs, _ = vgg(img)
     pos, pred = outputs.max(dim=1)
     print(label, pred)
     # get the gradient of the output with respect to the parameters of the model
