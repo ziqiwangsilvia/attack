@@ -157,7 +157,7 @@ def matplotlib_imshow(img, i, args, one_channel=False):
     if one_channel:
         img = img.mean(dim=0)
     img = img / 2 + 0.5     # unnormalize
-    npimg = img.numpy()
+    npimg = img.cpu().numpy()
     if one_channel:
         plt.axis('off')
         plt.imshow(npimg, cmap="Greys")
@@ -167,9 +167,9 @@ def matplotlib_imshow(img, i, args, one_channel=False):
         plt.savefig(args['path'] + 'test_%d_eps_%.2f.jpg'%(i, args['eps']), bbox_inches='tight')
         
 def save_exp(heatmap, img, args, i):
-    heatmap = cv2.resize(heatmap.numpy(), (img.shape[2], img.shape[3]))
+    heatmap = cv2.resize(heatmap.cpu().numpy(), (img.shape[2], img.shape[3]))
     heatmap = np.uint8(255 * heatmap)
-    img = np.uint8(255 * img.squeeze().resize(32, 32, 3).numpy())
+    img = np.uint8(255 * img.squeeze().resize(32, 32, 3).cpu().numpy())
     heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
     superimposed_img = heatmap * 1 + img*0
     final = cv2.resize(superimposed_img, (128, 128))
