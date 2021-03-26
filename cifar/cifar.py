@@ -38,7 +38,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--conservative', default='False', choices = ['False', 'center'])
+    parser.add_argument('--conservative', default='False', choices = ['False', 'center', 'double'])
     parser.add_argument('--conservative_a', default= 0.05, type=float)
     parser.add_argument('--epoch', default=200, type=int)
     parser.add_argument('--exp', default=0, type=int)
@@ -146,6 +146,8 @@ if __name__ == '__main__':
         path = 'tune_hps/conservative_a_' + str(args['conservative_a']) + \
                 '/lr_' + str(args['lr']) + '/tbs_' + str(args['train_batch_size']) + '/wd_' + str(args['weight_decay']) + '/'
     
+    elif args['conservative'] == 'double':
+        path = 'conservative_double/exp_' + str(args['exp']) + '/' 
     elif args['conservative'] == 'False':
         path = 'conservative_False/exp_' + str(args['exp']) + '/' 
     elif args['conservative'] == 'center':

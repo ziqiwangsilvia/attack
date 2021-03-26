@@ -62,9 +62,10 @@ class Net(nn.Module):
     def __init__(self, num_classes, conservative, a, triangular):
         super(Net, self).__init__()
         self.net = torchvision.models.vgg16(num_classes = num_classes, pretrained=False)
+        self.conservative = conservative
         if triangular:
             convert_relu_to_triangular(self.net)
-        if conservative == 'False':
+        if conservative == 'double':
             self.softmax = nn.Softmax()
         elif conservative == 'monotone':
             self.softmax = conservative_softmax_monotone(num_classes, a)
@@ -73,5 +74,8 @@ class Net(nn.Module):
 
     def forward(self, x):
         z = self.net(x)
-        x = self.softmax(z)
-        return x, z
+        if self.conservative == 'False':
+            return z, z
+        else:
+            x = self.softmax(z)
+            return x, z
