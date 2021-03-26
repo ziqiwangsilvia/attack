@@ -64,7 +64,7 @@ dataset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                         download=True, transform=transform)
 
 # define the dataloader to load that single image
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=2,
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=5,
                                          shuffle=False, num_workers=1)
 
 
@@ -179,7 +179,7 @@ def grad_cam(args):
     vgg = VGG(args)
     loss = nn.CrossEntropyLoss()
     
-    for eps in np.arange(0,0.1,0.005):
+    for eps in np.arange(0,1,0.1):
         args['eps'] = eps
         images, labels = next(iter(dataloader))
         for i, (img, label) in enumerate(zip(images, labels)):
