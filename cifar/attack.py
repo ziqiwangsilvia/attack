@@ -43,6 +43,7 @@ def get_args():
     parser.add_argument('--weight_decay', default=5e-6, type=float)
     parser.add_argument('--tune_hps', default=False, type=str2bool)
     parser.add_argument('--triangular', default=False, type=str2bool)
+    parser.add_argument('--attack_type', default='FGSM', choices = ['FGSM', 'BIM'])
     
     args = parser.parse_args()
 
@@ -132,8 +133,10 @@ def test(test_loader, net, eps):
         Y = Variable(Y.squeeze()).to(device) 
         
         loss = nn.CrossEntropyLoss()
-        X = fgsm_attack(net, loss, X, Y, eps)
-        X = BIM_attack(net, loss, X, Y, 0, eps, 1, iters=10)
+        if hps['attack_type'] == 'FGSM':
+            X = fgsm_attack(net, loss, X, Y, eps)
+        elif hps['attack_type'] == 'BIM':
+            X = BIM_attack(net, loss, X, Y, 0, eps, 1, iters=10)
         nb = nb + len(X)
 
         outputs, _ = net(X)
