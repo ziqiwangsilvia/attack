@@ -81,6 +81,44 @@ def fgsm_attack(model, loss, images, labels, eps) :
     attack_images = images + eps*images.grad.sign()    
     return attack_images
 
+def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0) :
+    images = images
+    labels = labels
+    clamp_max = 255
+    
+    if iters == 0 :
+        # The paper said min(eps + 4, 1.25*eps) is used as iterations
+        iters = int(min(eps + 4, 1.25*eps))
+                
+    if scale :
+        eps = eps / 255
+        clamp_max = clamp_max / 255
+        
+    for i in range(iters) :    
+        images.requires_grad = True
+        outputs,r = model(images)
+
+        model.zero_grad()
+        cost = loss(outputs, labels)
+        cost.backward()
+
+        attack_images = images + (eps/iters)*images.grad.sign()
+        
+        # Clip attack images(X')
+        # min{255, X+eps, max{0, X-eps, X'}}
+        # = min{255, min{X+eps, max{max{0, X-eps}, X'}}}
+        
+        # a = max{0, X-eps}
+        a = torch.clamp(images - eps, min=0)
+        # b = max{a, X'}
+        b = (attack_images>=a).float()*attack_images + (a>attack_images).float()*a
+        # c = min{X+eps, b}
+        c = (b > images+eps).float()*(images+eps) + (images+eps >= b).float()*b
+        # d = min{255, c}
+        images = torch.clamp(c, max=clamp_max).detach_()
+            
+    return images
+
 def test(test_loader, net, eps):
     net.eval()
     Acc_y = 0
@@ -95,6 +133,7 @@ def test(test_loader, net, eps):
         
         loss = nn.CrossEntropyLoss()
         X = fgsm_attack(net, loss, X, Y, eps)
+        X = BIM_attack(net, loss, X, Y, 0, eps, 1, iters=10)
         nb = nb + len(X)
 
         outputs, _ = net(X)
