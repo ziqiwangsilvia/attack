@@ -110,11 +110,11 @@ def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0) :
         # = min{255, min{X+eps, max{max{0, X-eps}, X'}}}
         
         # a = max{0, X-eps}
-        a = torch.clamp(images - eps, min=0)
+        a = torch.clamp(attack_images - eps, min=0)
         # b = max{a, X'}
         b = (attack_images>=a).float()*attack_images + (a>attack_images).float()*a
         # c = min{X+eps, b}
-        c = (b > images+eps).float()*(images+eps) + (images+eps >= b).float()*b
+        c = (b > attack_images+eps).float()*(attack_images+eps) + (attack_images+eps >= b).float()*b
         # d = min{255, c}
         images = torch.clamp(c, max=clamp_max).detach_()
             
