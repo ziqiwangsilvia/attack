@@ -47,13 +47,14 @@ def get_args():
     parser.add_argument('--weight_decay', default=5e-6, type=float)
     parser.add_argument('--tune_hps', default=False, type=str2bool)
     parser.add_argument('--triangular', default=False, type=str2bool)
+    parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19'])
     
     args = parser.parse_args()
 
     return args
 
 def main(args):
-    net = Net(args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
+    net = Net(args['network'], args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
     trainset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'train') 
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=args['train_batch_size'],
                                               shuffle=True, num_workers=1)
