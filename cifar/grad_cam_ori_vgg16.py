@@ -56,11 +56,21 @@ def get_args():
     return args
 
 
-# use the ImageNet transformation
+# =============================================================================
+# # use the ImageNet transformation
+# transform = transforms.Compose([transforms.Resize((224, 224)), 
+#                                 transforms.ToTensor(),
+#                                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+# 
+# # define a 1 image dataset
+# dataset = datasets.ImageFolder(root='data/test_gradcam/', transform=transform)
+# # define the dataloader to load that single image
+# dataloader = data.DataLoader(dataset=dataset, shuffle=False, batch_size=1)
+# =============================================================================
+
 transform = transforms.Compose([transforms.ToTensor(),
                                          transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
 
-# define a 1 image dataset
 dataset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                         download=True, transform=transform)
 
@@ -76,6 +86,21 @@ class VGG(nn.Module):
         # get the pretrained VGG19 network
         #self.vgg = torchvision.models.vgg16(pretrained=True).to(device)
         self.vgg = Net(args['network'], args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
+# =============================================================================
+#         # get the pretrained VGG19 network
+#         self.vgg = torchvision.models.vgg16(pretrained=True).to(device)
+#         # disect the network to access its last convolutional layer
+#         self.features_conv = self.vgg.features[:36]
+#         
+#         # get the max pool of the features stem
+#         self.max_pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+#         self.avg_pool = nn.AdaptiveAvgPool2d(output_size=(7, 7))
+#         # get the classifier of the vgg19
+#         self.classifier = self.vgg.classifier
+#         
+#         # placeholder for the gradients
+#         self.gradients = None
+# =============================================================================
         self.vgg.load_state_dict(torch.load(path + 'best_net_checkpoint.pt'))
         # disect the network to access its last convolutional layer
         self.features_conv = self.vgg.net.features[:30]
@@ -209,6 +234,10 @@ if __name__ == '__main__':
         path = 'conservative_False/exp_' + str(args['exp']) + '/' 
     elif args['conservative'] == 'center':
         path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
+        
+# =============================================================================
+#     path = 'data/test_gradcam/Elephant/'
+# =============================================================================
     hps['path'] = path
     hps['eps'] = 0
     grad_cam(hps)
