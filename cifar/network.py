@@ -59,9 +59,12 @@ class conservative_softmax_monotone(nn.Module):
 use_gpu = torch.cuda.is_available()
 
 class Net(nn.Module):
-    def __init__(self, num_classes, conservative, a, triangular):
+    def __init__(self, network, num_classes, conservative, a, triangular):
         super(Net, self).__init__()
-        self.net = torchvision.models.vgg16(num_classes = num_classes, pretrained=False)
+        if network=='vgg16':
+            self.net = torchvision.models.vgg16(num_classes = num_classes, pretrained=False)
+        elif network=='vgg19':
+            self.net = torchvision.models.vgg19(num_classes = num_classes, pretrained=False)
         self.conservative = conservative
         if triangular:
             convert_relu_to_triangular(self.net)
