@@ -49,6 +49,7 @@ def get_args():
     parser.add_argument('--weight_decay', default=5e-6, type=float)
     parser.add_argument('--tune_hps', default=False, type=str2bool)
     parser.add_argument('--triangular', default=False, type=str2bool)
+    parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19'])
     
     args = parser.parse_args()
 
@@ -74,7 +75,7 @@ class VGG(nn.Module):
         
         # get the pretrained VGG19 network
         #self.vgg = torchvision.models.vgg16(pretrained=True).to(device)
-        self.vgg = Net(args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
+        self.vgg = Net(args['network'], args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
         self.vgg.load_state_dict(torch.load(path + 'best_net_checkpoint.pt'))
         # disect the network to access its last convolutional layer
         self.features_conv = self.vgg.net.features[:30]
@@ -179,7 +180,7 @@ def grad_cam(args):
     vgg = VGG(args)
     loss = nn.CrossEntropyLoss()
     
-    for eps in np.arange(0,100,1):
+    for eps in np.arange(0,1.1,0.1):
         args['eps'] = eps
         images, labels = next(iter(dataloader))
         for i, (img, label) in enumerate(zip(images, labels)):

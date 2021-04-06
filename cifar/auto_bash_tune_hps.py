@@ -10,7 +10,7 @@ from utils import check_mkdir
 import os
 import numpy as np
 
-path = 'jobs/tune_hps/'
+path = 'jobs/tune_hps_vgg19/'
 check_mkdir(path)
 
 conservative = 'center'
@@ -38,7 +38,7 @@ module use /opt/insy/modulefiles
 module load cuda/10.1 cudnn/10.1-7.6.0.64
 
 echo "Starting at $(date)"
-srun python cifar.py --tune_hps=True --conservative=center --conservative_a=""" + str(a) + ' --lr=' + str(lr)  \
+srun python cifar.py --tune_hps=True --network=vgg19 --conservative=center --conservative_a=""" + str(a) + ' --lr=' + str(lr)  \
     + ' --train_batch_size=' + str(tb) +' --weight_decay=' + str(wd) +'\n' +
 """echo "Finished at $(date)"
 """
