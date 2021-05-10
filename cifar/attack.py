@@ -61,7 +61,7 @@ def main(args):
     testloader = torch.utils.data.DataLoader(testset, batch_size=args['test_batch_size'],
                                          shuffle=False, num_workers=1)
 
-    for eps in np.arange(0,0.21,0.01):
+    for eps in np.arange(0,1.1,0.1):
         test_acc_attack= test(testloader, net, eps)
         with open(path + 'attack_result_all.txt', 'a') as f:
             f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))

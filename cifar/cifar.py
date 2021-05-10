@@ -39,7 +39,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--conservative', default='False', choices = ['False', 'center', 'double', 'marco'])
-    parser.add_argument('--conservative_a', default= 0.05, type=float)
+    parser.add_argument('--conservative_a', default= 0.2, type=float)
     parser.add_argument('--epoch', default=200, type=int)
     parser.add_argument('--exp', default=0, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
