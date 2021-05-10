@@ -37,7 +37,22 @@ class conservative_softmax(nn.Module):
             pos.append(nu[i]/sum(nu))
         pos = torch.stack(pos, 1)
         return pos
-   
+
+class marco_softmax(nn.Module):
+    def __init__(self, num_classes):
+        super(marco_softmax, self).__init__()
+        self.num_classes = num_classes
+        self.e = torch.eye(num_classes)
+    def forward(self, input):        
+        nu = []
+        pos = []
+        for i in range(self.num_classes):
+            nu.append(1/((input-self.e[i])**2).sum(1) + 1e-20)
+        for i in range(self.num_classes):
+            pos.append(nu[i]/sum(nu))
+        pos = torch.stack(pos, 1)
+        return pos
+    
     
 class conservative_softmax_monotone(nn.Module): 
     def __init__(self, num_classes, a):
@@ -74,6 +89,8 @@ class Net(nn.Module):
             self.softmax = conservative_softmax_monotone(num_classes, a)
         elif conservative == 'center':
             self.softmax = conservative_softmax(num_classes, a)
+        elif conservative == 'marco':
+            self.softmax = marco_softmax(num_classes)
 
     def forward(self, x):
         z = self.net(x)
