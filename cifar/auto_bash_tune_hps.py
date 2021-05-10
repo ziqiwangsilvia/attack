@@ -13,19 +13,17 @@ import numpy as np
 path = 'jobs/tune_hps_vgg16_marco/'
 check_mkdir(path)
 
-conservative = 'center'
-conservative_a = [round(i, 2) for i in np.arange(0, 1.1, 0.1)]
-lrs = [1e-4, 5e-4, 1e-3, 5e-3]
+conservative = 'marco'
+lrs = [5e-4, 1e-3, 5e-3, 5e-2]
 tbs = [128, 256, 512]
 wds = [5e-4, 5e-6, 5e-8]
 
-for a in conservative_a:
-    for lr in lrs:
-        for tb in tbs:
-            for wd in wds:
-                for exp in range (0, 10):
-                    with open(path + 'exp_a_%.2f_lr_%.5f_tb_%d_wd_%.8f.sh' %(a, lr, tb, wd), 'w') as f:
-                        f.write("""#!/bin/sh
+for lr in lrs:
+    for tb in tbs:
+        for wd in wds:
+            for exp in range (0, 10):
+                with open(path + 'exp_lr_%.5f_tb_%d_wd_%.8f.sh' %(lr, tb, wd), 'w') as f:
+                    f.write("""#!/bin/sh
 #SBATCH --partition=general --qos=short
 #SBATCH --time=2:00:00
 #SBATCH --gres=gpu
