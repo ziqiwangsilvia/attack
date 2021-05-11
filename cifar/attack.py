@@ -51,7 +51,7 @@ def get_args():
     return args
 
 def main(args):
-    net = Net(args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
+    net = Net(args['network'], args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
     net.load_state_dict(torch.load(path + 'best_net_checkpoint.pt'))
 # =============================================================================
 #     trainset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'train') 
