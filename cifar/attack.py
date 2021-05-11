@@ -44,6 +44,7 @@ def get_args():
     parser.add_argument('--tune_hps', default=False, type=str2bool)
     parser.add_argument('--triangular', default=False, type=str2bool)
     parser.add_argument('--attack_type', default='FGSM', choices = ['FGSM', 'BIM'])
+    parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19'])
     
     args = parser.parse_args()
 
