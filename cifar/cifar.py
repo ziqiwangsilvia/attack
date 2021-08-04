@@ -47,7 +47,7 @@ def get_args():
     parser.add_argument('--weight_decay', default=5e-6, type=float)
     parser.add_argument('--tune_hps', default=False, type=str2bool)
     parser.add_argument('--triangular', default=False, type=str2bool)
-    parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19'])
+    parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18', 'resnet50'])
     
     args = parser.parse_args()
 

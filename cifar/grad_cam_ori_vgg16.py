@@ -68,14 +68,15 @@ def get_args():
 # dataloader = data.DataLoader(dataset=dataset, shuffle=False, batch_size=1)
 # =============================================================================
 
-transform = transforms.Compose([transforms.ToTensor(),
-                                         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
+transform = transforms.Compose([
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
 
 dataset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                         download=True, transform=transform)
 
 # define the dataloader to load that single image
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=15,
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=30,
                                          shuffle=False, num_workers=1)
 
 
@@ -103,7 +104,7 @@ class VGG(nn.Module):
 # =============================================================================
         self.vgg.load_state_dict(torch.load(path + 'best_net_checkpoint.pt'))
         # disect the network to access its last convolutional layer
-        self.features_conv = self.vgg.net.features[:30]
+        self.features_conv = self.vgg.net.features[:36]
         
         # get the max pool of the features stem
         self.max_pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
@@ -203,14 +204,13 @@ def save_exp(heatmap, img, args, i):
 def grad_cam(args):
     vgg = VGG(args)
     loss = nn.CrossEntropyLoss()
-    
-    for eps in np.arange(0,1.1,0.1):
+    vgg.eval()
+    for eps in np.arange(0,0.35,0.05):
         args['eps'] = eps
         images, labels = next(iter(dataloader))
         for i, (img, label) in enumerate(zip(images, labels)):
             img = img.unsqueeze(0).to(device)    
-            label = label.unsqueeze(0).to(device)
-            print(img.shape, label.shape)    
+            label = label.unsqueeze(0).to(device) 
             img_attack= fgsm_attack(vgg, loss, img, label, eps)        
            
             heatmap = get_heatmap(vgg, img_attack.to(device), label, args)
