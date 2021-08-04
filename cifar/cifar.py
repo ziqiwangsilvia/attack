@@ -14,13 +14,13 @@ from torch.autograd import Variable
 import argparse
 from utils import AverageMeter, str2bool, check_mkdir
 from network import Net
-from dataset import prepare_dataset
+from dataset import prepare_dataset, prepare_dataset_cifar100
 
 hps = {'train_all': True,
        'train_index': [0,1],
        'test_all': True,
        'test_index': [0,1],
-       'num_classes': 10,
+       'num_classes': 100,
        'train_batch_size': 128,
        'test_batch_size': 100,
        'epoch': 200,
@@ -48,6 +48,7 @@ def get_args():
     parser.add_argument('--tune_hps', default=False, type=str2bool)
     parser.add_argument('--triangular', default=False, type=str2bool)
     parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18', 'resnet50'])
+    parser.add_argument('--dataset', default='cifar100', choices=['cifar10', 'cifar100'])
     
     args = parser.parse_args()
 
@@ -55,10 +56,15 @@ def get_args():
 
 def main(args):
     net = Net(args['network'], args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
-    trainset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'train') 
+    if args['dataset'] == 'cifar10':
+        trainset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'train') 
+        testset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'test') 
+    else:
+        trainset = prepare_dataset_cifar100(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'train') 
+        testset = prepare_dataset_cifar100(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'test') 
+        
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=args['train_batch_size'],
-                                              shuffle=True, num_workers=1)
-    testset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'test') 
+                                              shuffle=True, num_workers=1)   
     testloader = torch.utils.data.DataLoader(testset, batch_size=args['test_batch_size'],
                                          shuffle=False, num_workers=1)
 
