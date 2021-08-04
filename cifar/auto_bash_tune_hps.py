@@ -12,8 +12,6 @@ import numpy as np
 
 path = 'jobs/tune_hps_resnet18_marco/'
 check_mkdir(path)
-
-conservative = 'marco'
 lrs = [1e-3, 5e-3, 5e-2, 1e-2, 1e-4]
 tbs = [128, 256, 512, 64, 32]
 wds = [5e-4, 5e-6]
