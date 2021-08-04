@@ -10,7 +10,7 @@ from utils import check_mkdir
 import os
 import numpy as np
 
-path = 'jobs/tune_hps_vgg16_marco/'
+path = 'jobs/tune_hps_resnet18_False/'
 check_mkdir(path)
 
 conservative = 'marco'
@@ -36,7 +36,7 @@ module use /opt/insy/modulefiles
 module load cuda/10.1 cudnn/10.1-7.6.0.64
 
 echo "Starting at $(date)"
-srun python cifar.py --tune_hps=True --network=resnet18 --conservative=marco""" + ' --lr=' + str(lr)  \
+srun python cifar.py --tune_hps=True --network=resnet18 --conservative=False""" + ' --lr=' + str(lr)  \
     + ' --train_batch_size=' + str(tb) +' --weight_decay=' + str(wd) +'\n' +
 """echo "Finished at $(date)"
 """
