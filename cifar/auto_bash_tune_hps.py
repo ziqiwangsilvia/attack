@@ -10,7 +10,7 @@ from utils import check_mkdir
 import os
 import numpy as np
 
-path = 'jobs/tune_hps_vgg16_marco/'
+path = 'jobs/tune_hps_resnet18_marco/'
 check_mkdir(path)
 
 conservative = 'marco'
