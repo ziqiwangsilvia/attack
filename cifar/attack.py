@@ -174,7 +174,7 @@ if __name__ == '__main__':
         hps[k] = args[k]
         
     if args['tune_hps']:
-        path = 'tune_hps_' + args['conservative'] + '_' + args['network'] + '/conservative_a_' + str(args['conservative_a']) + \
+        path = 'tune_hps_' + args['conservative'] + '_' + args['network'] + '_' + args['dataset'] + '/conservative_a_' + str(args['conservative_a']) + \
                 '/lr_' + str(args['lr']) + '/tbs_' + str(args['train_batch_size']) + '/wd_' + str(args['weight_decay']) + '/'
     elif args['conservative'] == 'double':
         path = 'conservative_double/exp_' + str(args['exp']) + '/'   
