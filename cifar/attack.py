@@ -44,7 +44,7 @@ def get_args():
     parser.add_argument('--tune_hps', default=False, type=str2bool)
     parser.add_argument('--triangular', default=False, type=str2bool)
     parser.add_argument('--attack_type', default='FGSM', choices = ['FGSM', 'BIM'])
-    parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19'])
+    parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18', 'resnet50'])
     
     args = parser.parse_args()
 
@@ -184,7 +184,7 @@ if __name__ == '__main__':
         path = 'conservative_False/exp_' + str(args['exp']) + '/' 
     elif args['conservative'] == 'center':
         path = 'conservative_center/' + str(args['conservative_a']) + '/exp_' + str(args['exp']) + '/' 
-
+    print(path)
     #check_mkdir(path)
     hps['path'] = path
     main(hps)
