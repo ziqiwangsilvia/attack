@@ -79,11 +79,16 @@ class Net(nn.Module):
         if network=='vgg16':
             self.net = torchvision.models.vgg16(num_classes = num_classes, pretrained=False)
         elif network=='vgg19':
-            self.net = torchvision.models.vgg19(num_classes = num_classes, pretrained=False)
+            self.net = torchvision.models.vgg19(pretrained=True)
+            self.net.classifier[6] = nn.Linear(4096,num_classes)
         elif network=='resnet18':
             self.net = torchvision.models.resnet18(num_classes = num_classes, pretrained=False)
         elif network=='resnet50':
-            self.net = torchvision.models.resnet50(num_classes = num_classes, pretrained=False)
+            self.net = torchvision.models.resnet50(pretrained=True)
+            self.net.fc = nn.Linear(2048, num_classes)
+        elif network=='squeezenet':
+            self.net = torchvision.models.squeezenet1_0(num_classes = num_classes, pretrained=False)
+        self.conservative = conservative
         self.conservative = conservative
         if triangular:
             convert_relu_to_triangular(self.net)

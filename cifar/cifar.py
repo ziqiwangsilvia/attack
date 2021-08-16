@@ -23,7 +23,7 @@ hps = {'train_all': True,
        'num_classes': 100,
        'train_batch_size': 128,
        'test_batch_size': 100,
-       'epoch': 200,
+       'epoch': 1000,
        'lr': 1e-3,
        'weight_decay': 5e-6,
        'print_freq':1,
@@ -47,7 +47,7 @@ def get_args():
     parser.add_argument('--weight_decay', default=5e-6, type=float)
     parser.add_argument('--tune_hps', default=False, type=str2bool)
     parser.add_argument('--triangular', default=False, type=str2bool)
-    parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18', 'resnet50'])
+    parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18', 'resnet50', 'squeezenet'])
     parser.add_argument('--dataset', default='cifar10', choices=['cifar10', 'cifar100'])
     
     args = parser.parse_args()
@@ -69,8 +69,9 @@ def main(args):
                                          shuffle=False, num_workers=1)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=args['lr'],
-                      momentum=0.9, weight_decay=args['weight_decay'])
+    #momentum=0.9, 
+    optimizer = optim.Adam(net.parameters(), lr=args['lr'],
+                      weight_decay=args['weight_decay'])
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
     best_Acc = 0 
