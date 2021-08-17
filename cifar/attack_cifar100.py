@@ -43,6 +43,7 @@ def get_args():
     parser.add_argument('--triangular', default=False, type=str2bool)
     parser.add_argument('--attack_type', default='FGSM', choices = ['FGSM', 'BIM'])
     parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18', 'resnet50'])
+    parser.add_argument('--dataset', default='cifar100', choices=['cifar10', 'cifar100'])
     
     args = parser.parse_args()
 
@@ -181,7 +182,7 @@ if __name__ == '__main__':
         hps[k] = args[k]
         
     if args['tune_hps']:
-        path = 'tune_hps_' + args['conservative'] + '_' + args['network'] + '_' + args['dataset'] + '/conservative_a_' + str(args['conservative_a']) + \
+        path = 'tune_hps_NLLLoss_' + args['conservative'] + '_' + args['network'] + '_' + args['dataset'] + '/conservative_a_' + str(args['conservative_a']) + \
                 '/lr_' + str(args['lr']) + '/tbs_' + str(args['train_batch_size']) + '/wd_' + str(args['weight_decay']) + '/'
     elif args['conservative'] == 'double':
         path = 'conservative_double/exp_' + str(args['exp']) + '/'   

@@ -10,10 +10,10 @@ from utils import check_mkdir
 import os
 import numpy as np
 
-path = 'jobs/tune_hps_cifar100_resnet50_pretrain_False/'
+path = 'jobs/tune_hps_cifar10_vgg16_marco_NLLLoss/'
 check_mkdir(path)
-lrs = [1e-4, 1e-3, 5e-4, 1e-2]
-tbs = [128, 256, 512, 1024, 2048]
+lrs = [1e-3, 5e-3, 1e-2]
+tbs = [64, 128, 256]
 wds = [5e-4, 5e-6]
 
 for lr in lrs:
@@ -34,7 +34,7 @@ module use /opt/insy/modulefiles
 module load cuda/10.1 cudnn/10.1-7.6.0.64
 
 echo "Starting at $(date)"
-srun python cifar.py --dataset=cifar100 --tune_hps=True --network=resnet50 --conservative=False""" + ' --lr=' + str(lr)  \
+srun python cifar_NLLLoss.py --dataset=cifar10 --tune_hps=True --network=vgg16 --conservative=marco""" + ' --lr=' + str(lr)  \
     + ' --train_batch_size=' + str(tb) +' --weight_decay=' + str(wd) +'\n' +
 """echo "Finished at $(date)"
 """

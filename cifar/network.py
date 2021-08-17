@@ -88,7 +88,7 @@ class Net(nn.Module):
             self.net.fc = nn.Linear(2048, num_classes)
         elif network=='squeezenet':
             self.net = torchvision.models.squeezenet1_0(num_classes = num_classes, pretrained=False)
-        self.conservative = conservative
+
         self.conservative = conservative
         if triangular:
             convert_relu_to_triangular(self.net)

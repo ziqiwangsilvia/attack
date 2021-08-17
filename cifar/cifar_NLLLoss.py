@@ -20,7 +20,7 @@ hps = {'train_all': True,
        'train_index': [0,1],
        'test_all': True,
        'test_index': [0,1],
-       'num_classes': 100,
+       'num_classes': 10,
        'train_batch_size': 128,
        'test_batch_size': 100,
        'epoch': 300,
@@ -70,7 +70,7 @@ def main(args):
 
     criterion = nn.NLLLoss()
     #momentum=0.9, 
-    optimizer = optim.Adam(net.parameters(), lr=args['lr'],
+    optimizer = optim.SGD(net.parameters(), lr=args['lr'],
                       weight_decay=args['weight_decay'])
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
