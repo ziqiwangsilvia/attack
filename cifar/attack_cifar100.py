@@ -12,14 +12,14 @@ import torch.nn as nn
 import argparse
 from torch.autograd import Variable
 from network import Net
-from dataset import prepare_dataset
+from dataset import prepare_dataset_cifar100
 from utils import str2bool, check_mkdir
 
 hps = {'train_all': True,
        'train_index': [0,1],
        'test_all': True,
        'test_index': [0,1],
-       'num_classes': 10,
+       'num_classes': 100,
        'train_batch_size': 128,
        'test_batch_size': 100,
        'epoch': 10,
@@ -29,8 +29,6 @@ hps = {'train_all': True,
        'conservative_a': 0.1,
        'exp': 0}
 
-classes = ('plane', 'car', 'bird', 'cat',
-           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_args():
@@ -58,12 +56,12 @@ def main(args):
 #     trainloader = torch.utils.data.DataLoader(trainset, batch_size=args['train_batch_size'],
 #                                               shuffle=True, num_workers=1)
 # =============================================================================
-    testset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'test') 
+    testset = prepare_dataset_cifar100(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'test') 
     testloader = torch.utils.data.DataLoader(testset, batch_size=args['test_batch_size'],
                                          shuffle=False, num_workers=1)
 
     for eps in np.arange(0,1.1,0.1):
-        test_acc_attack= test(testloader, net, eps)
+        test_acc_attack= test(testloader, net, eps, args)
         with open(path + 'attack_result_all.txt', 'a') as f:
             f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
 
@@ -121,22 +119,27 @@ def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0) :
             
     return images
 
-def test(test_loader, net, eps):
+def test(test_loader, net, eps, args):
     net.eval()
     Acc_y = 0
     nb = 0
-    class_correct = list(0. for i in range(hps['num_classes']))
-    class_total = list(0. for i in range(hps['num_classes']))
+# =============================================================================
+#     class_correct = list(0. for i in range(args['num_classes']))
+#     class_total = list(0. for i in range(args['num_classes']))
+# =============================================================================
     
     for i, data in enumerate(test_loader):
         X, Y = data 
         X = Variable(X).to(device)
         Y = Variable(Y.squeeze()).to(device) 
         
-        loss = nn.CrossEntropyLoss()
-        if hps['attack_type'] == 'FGSM':
+        if args['conservative'] == 'False':
+            loss = nn.CrossEntropyLoss()
+        elif args['conservative'] == 'marco':
+            loss = nn.NLLLoss()
+        if args['attack_type'] == 'FGSM':
             X = fgsm_attack(net, loss, X, Y, eps)
-        elif hps['attack_type'] == 'BIM':
+        elif args['attack_type'] == 'BIM':
             X = BIM_attack(net, loss, X, Y, 0, eps, 1, iters=10)
         nb = nb + len(X)
 
@@ -145,23 +148,27 @@ def test(test_loader, net, eps):
         # print('test posterior:')
         # print(outputs.max(1)[0], outputs.max(1)[1])
         Acc_y = Acc_y + (predicted - Y).nonzero().size(0)
-        c = (predicted == Y).squeeze()
-        for i in range(len(X)):
-            label = Y[i]
-            class_correct[label] += c[i].item()
-            class_total[label] += 1
+# =============================================================================
+#         c = (predicted == Y).squeeze()
+#         for i in range(len(X)):
+#             label = Y[i]
+#             class_correct[label] += c[i].item()
+#             class_total[label] += 1
+# =============================================================================
 
   
     test_acc = (nb - Acc_y)/nb 
     print('Accuracy:', test_acc)
     
-    for i in range(hps['num_classes']):
-        print('at eps %.5f accuracy of %5s : %5f ' % (eps,
-            classes[i], class_correct[i] / (1e-8 + class_total[i])))
-        with open(path + 'attack_result_per_class.txt', 'a') as f:
-            f.write('at eps %.5f accuracy of %5s : %5f \n' % (eps,
-                classes[i], class_correct[i] / (1e-8 + class_total[i])))
-    #print("test acc: %.5f"%test_acc)
+# =============================================================================
+#     for i in range(hps['num_classes']):
+#         print('at eps %.5f accuracy of %5s : %5f ' % (eps,
+#             classes[i], class_correct[i] / (1e-8 + class_total[i])))
+#         with open(path + 'attack_result_per_class.txt', 'a') as f:
+#             f.write('at eps %.5f accuracy of %5s : %5f \n' % (eps,
+#                 classes[i], class_correct[i] / (1e-8 + class_total[i])))
+#     #print("test acc: %.5f"%test_acc)
+# =============================================================================
     return test_acc
 
 
