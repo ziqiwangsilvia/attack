@@ -10,10 +10,10 @@ from utils import check_mkdir
 import os
 import numpy as np
 
-path = 'jobs/tune_hps_cifar100_resnet50_pretrain_marco_longjob/'
+path = 'jobs/tune_hps_cifar100_resnet50_pretrain_False/'
 check_mkdir(path)
-lrs = [1e-4, 5e-4, 5e-5]
-tbs = [256, 512, 1024, 2048]
+lrs = [1e-4, 1e-3, 5e-4, 1e-2]
+tbs = [128, 256, 512, 1024, 2048]
 wds = [5e-4, 5e-6]
 
 for lr in lrs:
@@ -22,8 +22,8 @@ for lr in lrs:
             for exp in range (0, 10):
                 with open(path + 'exp_lr_%.5f_tb_%d_wd_%.8f.sh' %(lr, tb, wd), 'w') as f:
                     f.write("""#!/bin/sh
-#SBATCH --partition=general --qos=long
-#SBATCH --time=24:00:00
+#SBATCH --partition=general --qos=short
+#SBATCH --time=4:00:00
 #SBATCH --gres=gpu
 #SBATCH --mem=7000
 #SBATCH --chdir=/tudelft.net/staff-bulk/ewi/insy/VisionLab/ziqiwang/attack/cifar
@@ -34,7 +34,7 @@ module use /opt/insy/modulefiles
 module load cuda/10.1 cudnn/10.1-7.6.0.64
 
 echo "Starting at $(date)"
-srun python cifar.py --dataset=cifar100 --tune_hps=True --network=resnet50 --conservative=marco""" + ' --lr=' + str(lr)  \
+srun python cifar.py --dataset=cifar100 --tune_hps=True --network=resnet50 --conservative=False""" + ' --lr=' + str(lr)  \
     + ' --train_batch_size=' + str(tb) +' --weight_decay=' + str(wd) +'\n' +
 """echo "Finished at $(date)"
 """

@@ -12,7 +12,7 @@ import torch.nn as nn
 import argparse
 from torch.autograd import Variable
 from network import Net
-from dataset import prepare_dataset
+from dataset import prepare_dataset, prepare_dataset_cifar100
 from utils import str2bool, check_mkdir
 
 hps = {'train_all': True,
@@ -45,12 +45,17 @@ def get_args():
     parser.add_argument('--triangular', default=False, type=str2bool)
     parser.add_argument('--attack_type', default='FGSM', choices = ['FGSM', 'BIM'])
     parser.add_argument('--network', default='vgg16', choices=['vgg16', 'vgg19', 'resnet18', 'resnet50'])
+    parser.add_argument('--dataset', default='cifar10', choices=['cifar10', 'cifar100'])
     
     args = parser.parse_args()
 
     return args
 
 def main(args):
+    if args['dataset'] == 'cifar10':
+        args['num_classes'] = 10
+    else:
+        args['num_classes'] = 100
     net = Net(args['network'], args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
     net.load_state_dict(torch.load(path + 'best_net_checkpoint.pt'))
 # =============================================================================
@@ -58,7 +63,10 @@ def main(args):
 #     trainloader = torch.utils.data.DataLoader(trainset, batch_size=args['train_batch_size'],
 #                                               shuffle=True, num_workers=1)
 # =============================================================================
-    testset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'test') 
+    if args['dataset'] == 'cifar10':
+        testset = prepare_dataset(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'test') 
+    else:
+        testset = prepare_dataset_cifar100(args['train_all'], args['train_index'], args['test_all'], args['test_index'], 'test') 
     testloader = torch.utils.data.DataLoader(testset, batch_size=args['test_batch_size'],
                                          shuffle=False, num_workers=1)
 
