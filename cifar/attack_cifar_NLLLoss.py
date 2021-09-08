@@ -148,7 +148,7 @@ def test(test_loader, net, eps, args):
         if args['attack_type'] == 'FGSM':
             X = fgsm_attack(net, loss, X, Y, eps)
         elif args['attack_type'] == 'BIM':
-            X = BIM_attack(net, loss, X, Y, 0, eps, 1, iters=10)
+            X = BIM_attack(net, loss, X, Y, 0, eps, 1, iters=100)
         nb = nb + len(X)
 
         outputs, _ = net(X)
