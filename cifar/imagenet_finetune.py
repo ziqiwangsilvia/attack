@@ -68,7 +68,7 @@ def gpu_process(gpu, args):
 
     # create model
     model = resnet50(pretrained=args.pretrained)
-    model.softmax = marco_softmax(1000)
+    model = nn.Sequential(model, marco_softmax(1000))
 
     # Set cudnn to deterministic setting
     if args.deterministic:
@@ -243,7 +243,7 @@ def validate(val_loader, model, criterion, gpu, args):
         # compute output
         with torch.no_grad():
             output = model(input)
-            loss = criterion(output, target)
+            loss = criterion(torch.log(output), target)
 
         # measure accuracy and record loss
         prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
@@ -349,7 +349,7 @@ if __name__ == '__main__':
                         help='manual epoch number (useful on restarts)')
     parser.add_argument('-b', '--batch-size', default=64, type=int,
                         metavar='N', help='mini-batch size per process (default: 64)')
-    parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
+    parser.add_argument('--lr', '--learning-rate', default=0.001, type=float,
                         metavar='LR', help='Initial learning rate.  Will be scaled by <global batch size>/64: args.lr = args.lr*float(args.batch_size*args.world_size)/256.  A warmup schedule will also be applied over the first 5 epochs.')
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                         help='momentum')
@@ -361,7 +361,7 @@ if __name__ == '__main__':
                         help='path to latest checkpoint (default: none)')
     parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                         help='evaluate model on validation set')
-    parser.add_argument('--pretrained', dest='pretrained', action='store_true',
+    parser.add_argument('--pretrained', dest='pretrained', action='store_false',
                         help='use pre-trained model')
     parser.add_argument('--dali_cpu', action='store_true',
                         help='Runs CPU based version of DALI pipeline.')
