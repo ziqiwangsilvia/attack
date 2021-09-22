@@ -53,7 +53,7 @@ def get_args():
 
 def main(args):
     net = Net(args['network'], args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
-    checkpoint = torch.load(path)
+    checkpoint = torch.load(path  + 'checkpoint.pth.tar')
     net.load_state_dict(checkpoint['model_state_dict'])
     epoch = checkpoint['epoch']
     print(epoch)
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     for k in args.keys():
         hps[k] = args[k]
         
-    path = 'imagenet_exps/finetune_' + str(args['lr']) + '/' + 'checkpoint.pth.tar'
+    path = 'imagenet_exps/finetune_' + str(args['lr']) + '/'
     
     print(path)
     #check_mkdir(path)
