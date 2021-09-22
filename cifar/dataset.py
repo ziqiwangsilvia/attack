@@ -108,12 +108,12 @@ def prepare_dataset_cifar100(train_all, train_index, test_all, test_index, mode)
 def load_imagenette(mode=None, transforms=None, ram_dataset=False):
     if mode == 'train':
         dataset = torchvision.datasets.ImageFolder(
-            root='data/imagenette-320/train',
+            root='/tudelft.net/staff-bulk/ewi/insy/VisionLab/ziqiwang/teachingtolie/data/imagenette-320/train',
             transform=transforms)
 
     elif mode == 'val':
         dataset = torchvision.datasets.ImageFolder(
-            root='data/imagenette-320/val',
+            root='/tudelft.net/staff-bulk/ewi/insy/VisionLab/ziqiwang/teachingtolie/data/imagenette-320/val',
             transform=transforms)
     return dataset
 
