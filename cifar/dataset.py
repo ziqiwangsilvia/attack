@@ -9,6 +9,7 @@ Created on Fri Mar 19 10:06:05 2021
 import torch
 import torchvision
 import torchvision.transforms as transforms
+from torch.utils import data
 
 def prepare_dataset(train_all, train_index, test_all, test_index, mode):
     transform_train = transforms.Compose([#transforms.RandomCrop(32, padding=4),
@@ -103,4 +104,40 @@ def prepare_dataset_cifar100(train_all, train_index, test_all, test_index, mode)
         return testset
             
 
+
+def load_imagenette(mode=None, transforms=None, ram_dataset=False):
+    if mode == 'train':
+        dataset = torchvision.datasets.ImageFolder(
+            root='data/imagenette-320/train',
+            transform=transforms)
+
+    elif mode == 'val':
+        dataset = torchvision.datasets.ImageFolder(
+            root='data/imagenette-320/val',
+            transform=transforms)
+    return dataset
+
+
+class Imagenette(data.Dataset):
+    def __init__(self, mode=None, input_shape=None, ram_dataset=False):
+        self.mode = mode
+        self.mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        self.short_size = int(min(input_shape) / 0.875)
+        self.input_shape = input_shape
+        self.transform = transforms.Compose([
+            transforms.Scale(self.short_size),
+            transforms.CenterCrop(self.input_shape),
+            transforms.ToTensor(),
+            transforms.Normalize(*self.mean_std)
+        ])
+
+        self.data = load_imagenette(mode=self.mode, transforms=self.transform, ram_dataset=ram_dataset)
+
+    def __getitem__(self, index):
+        X = self.data[index][0]
+        Y = self.data[index][1]
+        return X, Y
+
+    def __len__(self):
+        return len(self.data)
 
