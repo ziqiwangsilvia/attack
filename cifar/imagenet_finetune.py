@@ -355,13 +355,13 @@ if __name__ == '__main__':
                         help='momentum')
     parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                         metavar='W', help='weight decay (default: 1e-4)')
-    parser.add_argument('--print-freq', '-p', default=10, type=int,
+    parser.add_argument('--print_freq', '-p', default=10, type=int,
                         metavar='N', help='print frequency (default: 10)')
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
     parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                         help='evaluate model on validation set')
-    parser.add_argument('--pretrained', dest='pretrained', action='store_false',
+    parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                         help='use pre-trained model')
     parser.add_argument('--dali_cpu', action='store_true',
                         help='Runs CPU based version of DALI pipeline.')
