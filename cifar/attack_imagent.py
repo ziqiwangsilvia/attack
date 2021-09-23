@@ -44,28 +44,32 @@ def get_args():
                         help='number of data loading workers per GPU (default: 2)')
     parser.add_argument('--print_freq', '-p', default=10, type=int,
                         metavar='N', help='print frequency (default: 10)')
+    parser.add_argument('--deterministic', action='store_true')
     
     args = parser.parse_args()
 
     return args
 
 def main(args):
-# =============================================================================
-#     if args.dataset == 'imagenette':
-#         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-#         net.to(args.device)
-#         if args.conservative == 'False':
-#             criterion = nn.CrossEntropyLoss()
-#         elif args.conservative == 'marco':
-#             criterion = nn.NLLLoss()
-#         valset = Imagenette(mode='val', input_shape=args.input_shape)
-#         valloader = torch.utils.data.DataLoader(valset, batch_size=args.test_batch_size,
-#                                          shuffle=False, num_workers=1)
-#         for eps in np.arange(0,1.1,0.1):
-#             test_acc_attack= test_singel_proc(valloader, criterion, net, eps, args)
-#             with open(args.path + 'imagenette_attack_result_all.txt', 'a') as f:
-#                 f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
-# =============================================================================
+    model = resnet50(pretrained=False)
+    model = nn.Sequential(model, marco_softmax(1000))
+    checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
+    checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
+    model.load_state_dict(checkpoint['state_dict'])
+    if args.dataset == 'imagenette':
+        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        model.to(args.device)
+        if args.conservative == 'False':
+            criterion = nn.CrossEntropyLoss()
+        elif args.conservative == 'marco':
+            criterion = nn.NLLLoss()
+        valset = Imagenette(mode='val', input_shape=args.input_shape)
+        valloader = torch.utils.data.DataLoader(valset, batch_size=args.test_batch_size,
+                                         shuffle=False, num_workers=1)
+        for eps in np.arange(0,1.1,0.1):
+            test_acc_attack= test_singel_proc(valloader, criterion, model, eps, args)
+            with open(args.path + 'imagenette_attack_result_all.txt', 'a') as f:
+                f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
     if args.dataset == 'imagenet':
         # set address for master process to localhost since we use a single node
         os.environ['MASTER_ADDR'] = 'localhost'
@@ -87,6 +91,7 @@ def main(args):
             raise Exception("error: No data set provided")
      
         # start processes for all gpus
+        args.model=model
         mp.spawn(gpu_process, nprocs=args.world_size, args=(args,))
         
 
@@ -104,11 +109,6 @@ def gpu_process(gpu, args):
             torch.set_printoptions(precision=10)
     
         # push model to gpu
-        model = resnet50(pretrained=False)
-        model = nn.Sequential(model, marco_softmax(1000))
-        checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
-        checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
-        model.load_state_dict(checkpoint['state_dict'])
         model = args.model.cuda(gpu)
     
         # Scale learning rate based on global batch size
