@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import argparse
 from torch.autograd import Variable
-from network import Net
+from network import Net, marco_softmax
 from torchvision.models.resnet import resnet18, resnet50
 from dataset import prepare_dataset, prepare_dataset_cifar100, Imagenette
 from utils import str2bool, check_mkdir
@@ -23,7 +23,7 @@ hps = {'train_all': True,
        'num_classes': 1000,
        'input_shape':(224, 224),
        'train_batch_size': 128,
-       'test_batch_size': 100,
+       'test_batch_size': 50,
        'epoch': 10,
        'lr': 1e-3,
        'print_freq':1,
@@ -52,11 +52,11 @@ def get_args():
     return args
 
 def main(args):
-    net = Net(args['network'], args['num_classes'], args['conservative'], args['conservative_a'], args['triangular']).to(device)
+    net = resnet50(pretrained=False)
+    net = nn.Sequential(net, marco_softmax(1000)).to(device)
     checkpoint = torch.load(path  + 'checkpoint.pth.tar')
-    net.load_state_dict(checkpoint['model_state_dict'])
-    epoch = checkpoint['epoch']
-    print(epoch)
+    checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
+    net.load_state_dict(checkpoint['state_dict'])
 
     valset = Imagenette(mode='val', input_shape=hps['input_shape'])
     valloader = torch.utils.data.DataLoader(valset, batch_size=args['test_batch_size'],
@@ -74,10 +74,13 @@ def fgsm_attack(model, loss, images, labels, eps) :
     labels = labels
     images.requires_grad = True
             
-    outputs, _ = model(images)
+    outputs = model(images)
 
     model.zero_grad()
-    cost = loss(outputs, labels)
+    if args['conservative'] == 'False':
+        cost = loss(outputs, labels)
+    elif args['conservative'] == 'marco':
+        cost = loss(torch.log(outputs), labels)
     cost.backward()
     
     attack_images = images + eps*images.grad.sign()    
@@ -98,10 +101,13 @@ def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0) :
         
     for i in range(iters) :    
         images.requires_grad = True
-        outputs,r = model(images)
+        outputs= model(images)
 
         model.zero_grad()
-        cost = loss(outputs, labels)
+        if args['conservative'] == 'False':
+            cost = loss(outputs, labels)
+        elif args['conservative'] == 'marco':
+            cost = loss(torch.log(outputs), labels)
         cost.backward()
 
         attack_images = images + (eps/iters)*images.grad.sign()
@@ -145,7 +151,7 @@ def test(test_loader, net, eps, args):
             X = BIM_attack(net, loss, X, Y, 0, eps, 1, iters=100)
         nb = nb + len(X)
 
-        outputs, _ = net(X)
+        outputs = net(X)
         _, predicted = torch.max(outputs, 1)
         # print('test posterior:')
         # print(outputs.max(1)[0], outputs.max(1)[1])

@@ -125,7 +125,7 @@ class Imagenette(data.Dataset):
         self.short_size = int(min(input_shape) / 0.875)
         self.input_shape = input_shape
         self.transform = transforms.Compose([
-            transforms.Scale(self.short_size),
+            transforms.Resize(self.short_size),
             transforms.CenterCrop(self.input_shape),
             transforms.ToTensor(),
             transforms.Normalize(*self.mean_std)

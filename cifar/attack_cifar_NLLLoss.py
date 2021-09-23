@@ -83,7 +83,10 @@ def fgsm_attack(model, loss, images, labels, eps) :
     outputs, _ = model(images)
 
     model.zero_grad()
-    cost = loss(outputs, labels)
+    if args['conservative'] == 'False':
+        cost = loss(outputs, labels)
+    elif args['conservative'] == 'marco':
+        cost = loss(torch.log(outputs), labels)
     cost.backward()
     
     attack_images = images + eps*images.grad.sign()    
@@ -107,7 +110,10 @@ def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0) :
         outputs,r = model(images)
 
         model.zero_grad()
-        cost = loss(outputs, labels)
+        if args['conservative'] == 'False':
+            cost = loss(outputs, labels)
+        elif args['conservative'] == 'marco':
+            cost = loss(torch.log(outputs), labels)
         cost.backward()
 
         attack_images = images + (eps/iters)*images.grad.sign()
