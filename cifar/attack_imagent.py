@@ -85,8 +85,8 @@ def main(args):
         cudnn.benchmark = True
         assert torch.backends.cudnn.enabled, "Amp requires cudnn backend to be enabled."
 
-    if not len(args.data):
-        raise Exception("error: No data set provided")
+        if not len(args.data):
+            raise Exception("error: No data set provided")
 
       
         args.model = net
