@@ -69,7 +69,7 @@ def main(args):
     if args.dataset == 'imagenet':
         # set address for master process to localhost since we use a single node
         os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = '12355'
+        os.environ['MASTER_PORT'] = '12345'
     
         # use all gpus pytorch can find
         args.world_size = torch.cuda.device_count()
@@ -93,9 +93,9 @@ def main(args):
 def gpu_process(gpu, args):
         # each gpu runs in a separate proces
         torch.cuda.set_device(gpu)
+        print(gpu)
         torch.distributed.init_process_group(backend='nccl', init_method='env://',
                                              rank=gpu, world_size=args.world_size)
-    
         # Set cudnn to deterministic setting
         if args.deterministic:
             cudnn.benchmark = False
