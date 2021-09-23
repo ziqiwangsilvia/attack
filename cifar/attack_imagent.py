@@ -5,6 +5,7 @@ Created on Fri Mar 19 11:45:53 2021
 
 @author: ziqi
 """
+import os
 import time
 import numpy as np
 import torch
@@ -69,7 +70,25 @@ def main(args):
             with open(args.path + 'imagenette_attack_result_all.txt', 'a') as f:
                 f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
     elif args.dataset == 'imagenet':
+        # set address for master process to localhost since we use a single node
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '12355'
+    
+        # use all gpus pytorch can find
         args.world_size = torch.cuda.device_count()
+        print('Found {} GPUs:'.format(args.world_size))
+        for i in range(args.world_size):
+            print('{} : {}'.format(i, torch.cuda.get_device_name(i)))
+            
+        # TODO: find out what this stuff does
+        print("\nCUDNN VERSION: {}\n".format(torch.backends.cudnn.version()))
+        cudnn.benchmark = True
+        assert torch.backends.cudnn.enabled, "Amp requires cudnn backend to be enabled."
+
+    if not len(args.data):
+        raise Exception("error: No data set provided")
+
+      
         args.model = net
         # start processes for all gpus
         mp.spawn(gpu_process, nprocs=args.world_size, args=(args,))
