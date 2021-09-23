@@ -24,7 +24,6 @@ import torch.backends.cudnn as cudnn
 from torch.nn.parallel import DistributedDataParallel as DDP
 from imagenet_finetune import accuracy, reduce_tensor, to_python_float, AverageMeter
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -58,6 +57,7 @@ def main(args):
     net.load_state_dict(checkpoint['state_dict'])
 
     if args.dataset == 'imagenette':
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         net.to(device)
         if args.conservative == 'False':
             criterion = nn.CrossEntropyLoss()
