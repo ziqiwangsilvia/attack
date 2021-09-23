@@ -49,7 +49,6 @@ class marco_softmax(nn.Module):
         nu = []
         pos = []
         for i in range(self.num_classes):
-            print(self.e.device)
             nu.append(1/((input-self.e[i])**2).sum(1) + 1e-20)
         for i in range(self.num_classes):
             pos.append(nu[i]/sum(nu))
