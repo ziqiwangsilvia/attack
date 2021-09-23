@@ -52,22 +52,28 @@ def get_args():
 
 def main(args):
     
-# =============================================================================
-#     if args.dataset == 'imagenette':
-#         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-#         model.to(args.device)
-#         if args.conservative == 'False':
-#             criterion = nn.CrossEntropyLoss()
-#         elif args.conservative == 'marco':
-#             criterion = nn.NLLLoss()
-#         valset = Imagenette(mode='val', input_shape=args.input_shape)
-#         valloader = torch.utils.data.DataLoader(valset, batch_size=args.test_batch_size,
-#                                          shuffle=False, num_workers=1)
-#         for eps in np.arange(0,1.1,0.1):
-#             test_acc_attack= test_singel_proc(valloader, criterion, model, eps, args)
-#             with open(args.path + 'imagenette_attack_result_all.txt', 'a') as f:
-#                 f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
-# =============================================================================
+    if args.dataset == 'imagenette':
+        model = resnet50(pretrained=False)
+        model = nn.Sequential(model, marco_softmax(1000))
+        checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
+        checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
+        model.load_state_dict(checkpoint['state_dict'])
+        
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        model = model.to(device)
+        
+        if args.conservative == 'False':
+            criterion = nn.CrossEntropyLoss()
+        elif args.conservative == 'marco':
+            criterion = nn.NLLLoss()
+        valset = Imagenette(mode='val', input_shape=args.input_shape)
+        valloader = torch.utils.data.DataLoader(valset, batch_size=args.test_batch_size,
+                                         shuffle=False, num_workers=1)
+        for eps in np.arange(0,1.1,0.1):
+            args.eps = eps
+            test_acc_attack= test_singel_proc(valloader, criterion, model, args)
+            with open(args.path + 'imagenette_attack_result_all.txt', 'a') as f:
+                f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
     if args.dataset == 'imagenet':
         # set address for master process to localhost since we use a single node
         os.environ['MASTER_ADDR'] = 'localhost'
@@ -117,7 +123,10 @@ def gpu_process(gpu, args):
         model = DDP(model, device_ids=[gpu], output_device=gpu)
     
         # define loss function (criterion) and optimizer
-        criterion = nn.NLLLoss().cuda(gpu)
+        if args.conservative == 'False':
+            criterion = nn.CrossEntropyLoss().cuda(gpu)
+        elif args.conservative == 'marco':
+            criterion = nn.NLLLoss().cuda(gpu)
   
         # Data loading code
         valloader = ImageNet_TFRecord(args.data, 'val', args.test_batch_size, args.workers,
@@ -125,13 +134,14 @@ def gpu_process(gpu, args):
     
         # only evaluate model, no training
         for eps in np.arange(0,1.1,0.1):
-            test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args, eps)
+            args.eps = eps
+            test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args)
             with open(args.path + 'tfimagenet_attack_result_all.txt', 'a') as f:
                 f.write('acc at eps %.5f: %.5f, %.5f\n' %(eps, test_acc_t1, test_acc_t5))    
             
         return
 
-def test_multi_proc(val_loader, model, criterion, gpu, args, eps):
+def test_multi_proc(val_loader, model, criterion, gpu, args):
     batch_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
@@ -150,11 +160,14 @@ def test_multi_proc(val_loader, model, criterion, gpu, args, eps):
         # compute output
         with torch.no_grad():
             if args.attack_type == 'FGSM':
-                X = fgsm_attack(model, criterion, input, target, eps)
+                X = fgsm_attack(model, criterion, input, target, args)
             elif args.attack_type == 'BIM':
-                X = BIM_attack(model, criterion, input, target, 0, eps, 1, iters=100)
+                X = BIM_attack(model, criterion, input, target, 0, args.eps, 1, iters=100)
             output = model(X)
-            loss = criterion(torch.log(output), target)
+            if args.conservative == 'False':
+                loss = criterion(output. target)
+            elif args.conservative == 'marco':
+                loss = criterion(torch.log(output), target)
         
         # measure accuracy and record loss
         prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
@@ -188,7 +201,7 @@ def test_multi_proc(val_loader, model, criterion, gpu, args, eps):
     return [top1.avg, top5.avg]
 
 
-def fgsm_attack(model, loss, images, labels, eps) :
+def fgsm_attack(model, loss, images, labels, args) :
     
     images = images
     labels = labels
@@ -203,7 +216,7 @@ def fgsm_attack(model, loss, images, labels, eps) :
         cost = loss(torch.log(outputs), labels)
     cost.backward()
     
-    attack_images = images + eps*images.grad.sign()    
+    attack_images = images + args.eps*images.grad.sign()    
     return attack_images
 
 def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0) :
@@ -248,7 +261,7 @@ def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0) :
     return images
 
 
-def test_singel_proc(test_loader, loss, net, eps, args):
+def test_singel_proc(test_loader, loss, net, args):
     net.eval()
     Acc_y = 0
     nb = 0
@@ -259,9 +272,9 @@ def test_singel_proc(test_loader, loss, net, eps, args):
         Y = Variable(Y.squeeze()).to(args.device) 
         
         if args.attack_type == 'FGSM':
-            X = fgsm_attack(net, loss, X, Y, eps)
+            X = fgsm_attack(net, loss, X, Y, args)
         elif args.attack_type == 'BIM':
-            X = BIM_attack(net, loss, X, Y, 0, eps, 1, iters=100)
+            X = BIM_attack(net, loss, X, Y, 0, args.eps, 1, iters=100)
         nb = nb + len(X)
 
         outputs = net(X)
