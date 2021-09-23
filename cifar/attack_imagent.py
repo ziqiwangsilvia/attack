@@ -32,7 +32,7 @@ def get_args():
     parser.add_argument('--conservative_a', default= 0.2, type=float)
     parser.add_argument('--exp', default=0, type=int)
     parser.add_argument('--lr', default=5e-5, type=float)
-    parser.add_argument('--test_batch_size', default=256, type=int)
+    parser.add_argument('--test_batch_size', default=64, type=int)
     parser.add_argument('--weight_decay', default=5e-6, type=float)
     parser.add_argument('--tune_hps', default=False, type=str2bool)
     parser.add_argument('--triangular', default=False, type=str2bool)
@@ -52,12 +52,13 @@ def get_args():
 
 def main(args):
     net = resnet50(pretrained=False)
-    net = nn.Sequential(net, marco_softmax(1000)).to(device)
+    net = nn.Sequential(net, marco_softmax(1000))
     checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
     checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
     net.load_state_dict(checkpoint['state_dict'])
 
     if args.dataset == 'imagenette':
+        net.to(device)
         if args.conservative == 'False':
             criterion = nn.CrossEntropyLoss()
         elif args.conservative == 'marco':
