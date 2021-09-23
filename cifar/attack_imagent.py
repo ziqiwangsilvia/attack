@@ -56,21 +56,23 @@ def main(args):
     checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
     net.load_state_dict(checkpoint['state_dict'])
 
-    if args.dataset == 'imagenette':
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        net.to(device)
-        if args.conservative == 'False':
-            criterion = nn.CrossEntropyLoss()
-        elif args.conservative == 'marco':
-            criterion = nn.NLLLoss()
-        valset = Imagenette(mode='val', input_shape=args.input_shape)
-        valloader = torch.utils.data.DataLoader(valset, batch_size=args.test_batch_size,
-                                         shuffle=False, num_workers=1)
-        for eps in np.arange(0,1.1,0.1):
-            test_acc_attack= test_singel_proc(valloader, criterion, net, eps, args)
-            with open(args.path + 'imagenette_attack_result_all.txt', 'a') as f:
-                f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
-    elif args.dataset == 'imagenet':
+# =============================================================================
+#     if args.dataset == 'imagenette':
+#         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+#         net.to(args.device)
+#         if args.conservative == 'False':
+#             criterion = nn.CrossEntropyLoss()
+#         elif args.conservative == 'marco':
+#             criterion = nn.NLLLoss()
+#         valset = Imagenette(mode='val', input_shape=args.input_shape)
+#         valloader = torch.utils.data.DataLoader(valset, batch_size=args.test_batch_size,
+#                                          shuffle=False, num_workers=1)
+#         for eps in np.arange(0,1.1,0.1):
+#             test_acc_attack= test_singel_proc(valloader, criterion, net, eps, args)
+#             with open(args.path + 'imagenette_attack_result_all.txt', 'a') as f:
+#                 f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
+# =============================================================================
+    if args.dataset == 'imagenet':
         # set address for master process to localhost since we use a single node
         os.environ['MASTER_ADDR'] = 'localhost'
         os.environ['MASTER_PORT'] = '12355'
@@ -80,15 +82,17 @@ def main(args):
         print('Found {} GPUs:'.format(args.world_size))
         for i in range(args.world_size):
             print('{} : {}'.format(i, torch.cuda.get_device_name(i)))
-            
+    
+        # total batch size = batch size per gpu * ngpus
+        args.total_batch_size = args.world_size * args.batch_size
+    
         # TODO: find out what this stuff does
         print("\nCUDNN VERSION: {}\n".format(torch.backends.cudnn.version()))
         cudnn.benchmark = True
         assert torch.backends.cudnn.enabled, "Amp requires cudnn backend to be enabled."
-
+    
         if not len(args.data):
             raise Exception("error: No data set provided")
-
       
         args.model = net
         # start processes for all gpus
@@ -256,8 +260,8 @@ def test_singel_proc(test_loader, loss, net, eps, args):
     
     for i, data in enumerate(test_loader):
         X, Y = data 
-        X = Variable(X).to(device)
-        Y = Variable(Y.squeeze()).to(device) 
+        X = Variable(X).to(args.device)
+        Y = Variable(Y.squeeze()).to(args.device) 
         
         if args.attack_type == 'FGSM':
             X = fgsm_attack(net, loss, X, Y, eps)
