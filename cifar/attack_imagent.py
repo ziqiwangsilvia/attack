@@ -23,21 +23,6 @@ import torch.backends.cudnn as cudnn
 from torch.nn.parallel import DistributedDataParallel as DDP
 from imagenet_finetune import accuracy, reduce_tensor, to_python_float, AverageMeter
 
-hps = {'train_all': True,
-       'train_index': [0,1],
-       'test_all': True,
-       'test_index': [0,1],
-       'num_classes': 1000,
-       'input_shape':(224, 224),
-       'train_batch_size': 128,
-       'test_batch_size': 50,
-       'epoch': 10,
-       'lr': 1e-3,
-       'print_freq':1,
-       'conservative': 'False',
-       'conservative_a': 0.1,
-       'exp': 0}
-
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_args():
@@ -46,7 +31,7 @@ def get_args():
     parser.add_argument('--conservative_a', default= 0.2, type=float)
     parser.add_argument('--exp', default=0, type=int)
     parser.add_argument('--lr', default=5e-5, type=float)
-    parser.add_argument('--train_batch_size', default=256, type=int)
+    parser.add_argument('--test_batch_size', default=256, type=int)
     parser.add_argument('--weight_decay', default=5e-6, type=float)
     parser.add_argument('--tune_hps', default=False, type=str2bool)
     parser.add_argument('--triangular', default=False, type=str2bool)
@@ -57,6 +42,8 @@ def get_args():
                         default='/tudelft.net/staff-bulk/ewi/insy/CV-DataSets/imagenet/tfrecords')
     parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                         help='number of data loading workers per GPU (default: 2)')
+    parser.add_argument('--print_freq', '-p', default=10, type=int,
+                        metavar='N', help='print frequency (default: 10)')
     
     args = parser.parse_args()
 
@@ -65,19 +52,23 @@ def get_args():
 def main(args):
     net = resnet50(pretrained=False)
     net = nn.Sequential(net, marco_softmax(1000)).to(device)
-    checkpoint = torch.load(path  + 'checkpoint.pth.tar')
+    checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
     checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
     net.load_state_dict(checkpoint['state_dict'])
 
-    if args['dataset'] == 'imagenette':
-        valset = Imagenette(mode='val', input_shape=hps['input_shape'])
-        valloader = torch.utils.data.DataLoader(valset, batch_size=args['test_batch_size'],
+    if args.dataset == 'imagenette':
+        if args.conservative == 'False':
+            criterion = nn.CrossEntropyLoss()
+        elif args.conservative == 'marco':
+            criterion = nn.NLLLoss()
+        valset = Imagenette(mode='val', input_shape=args.input_shape)
+        valloader = torch.utils.data.DataLoader(valset, batch_size=args.test_batch_size,
                                          shuffle=False, num_workers=1)
         for eps in np.arange(0,1.1,0.1):
-            test_acc_attack= test_singel_proc(valloader, net, eps, args)
-            with open(path + 'imagenette_attack_result_all.txt', 'a') as f:
+            test_acc_attack= test_singel_proc(valloader, criterion, net, eps, args)
+            with open(args.path + 'imagenette_attack_result_all.txt', 'a') as f:
                 f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
-    elif args['dataset'] == 'imagenet':
+    elif args.dataset == 'imagenet':
         args.world_size = torch.cuda.device_count()
         args.model = net
         # start processes for all gpus
@@ -101,7 +92,7 @@ def gpu_process(gpu, args):
         model = args.model.cuda(gpu)
     
         # Scale learning rate based on global batch size
-        args.lr = args.lr*float(args.batch_size*args.world_size)/256.
+        args.lr = args.lr*float(args.test_batch_size*args.world_size)/256.
     
         # Use DistributedDataParallel for distributed training
         model = DDP(model, device_ids=[gpu], output_device=gpu)
@@ -110,13 +101,13 @@ def gpu_process(gpu, args):
         criterion = nn.NLLLoss().cuda(gpu)
   
         # Data loading code
-        valloader = ImageNet_TFRecord(args.data, 'val', args.batch_size, args.workers,
+        valloader = ImageNet_TFRecord(args.data, 'val', args.test_batch_size, args.workers,
                                        gpu, args.world_size, augment=False)
     
         # only evaluate model, no training
         for eps in np.arange(0,1.1,0.1):
             test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args, eps)
-            with open(path + 'tfimagenet_attack_result_all.txt', 'a') as f:
+            with open(args.path + 'tfimagenet_attack_result_all.txt', 'a') as f:
                 f.write('acc at eps %.5f: %.5f, %.5f\n' %(eps, test_acc_t1, test_acc_t5))    
             
         return
@@ -135,13 +126,13 @@ def test_multi_proc(val_loader, model, criterion, gpu, args, eps):
     for i, data in enumerate(val_loader):
         input = data[0]["data"]
         target = data[0]["label"].squeeze().cuda(gpu).long()
-        val_loader_len = int(val_loader._size / args.batch_size)
+        val_loader_len = int(val_loader._size / args.test_batch_size)
 
         # compute output
         with torch.no_grad():
-            if args['attack_type'] == 'FGSM':
+            if args.attack_type == 'FGSM':
                 X = fgsm_attack(model, criterion, input, target, eps)
-            elif args['attack_type'] == 'BIM':
+            elif args.attack_type == 'BIM':
                 X = BIM_attack(model, criterion, input, target, 0, eps, 1, iters=100)
             output = model(X)
             loss = criterion(torch.log(output), target)
@@ -168,8 +159,8 @@ def test_multi_proc(val_loader, model, criterion, gpu, args, eps):
                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                        i, val_loader_len,
-                       args.world_size * args.batch_size / batch_time.val,
-                       args.world_size * args.batch_size / batch_time.avg,
+                       args.world_size * args.test_batch_size / batch_time.val,
+                       args.world_size * args.test_batch_size / batch_time.avg,
                        batch_time=batch_time, loss=losses,
                        top1=top1, top5=top5))
 
@@ -187,9 +178,9 @@ def fgsm_attack(model, loss, images, labels, eps) :
     outputs = model(images)
 
     model.zero_grad()
-    if args['conservative'] == 'False':
+    if args.conservative == 'False':
         cost = loss(outputs, labels)
-    elif args['conservative'] == 'marco':
+    elif args.conservative == 'marco':
         cost = loss(torch.log(outputs), labels)
     cost.backward()
     
@@ -214,9 +205,9 @@ def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0) :
         outputs= model(images)
 
         model.zero_grad()
-        if args['conservative'] == 'False':
+        if args.conservative == 'False':
             cost = loss(outputs, labels)
-        elif args['conservative'] == 'marco':
+        elif args.conservative == 'marco':
             cost = loss(torch.log(outputs), labels)
         cost.backward()
 
@@ -238,7 +229,7 @@ def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0) :
     return images
 
 
-def test_singel_proc(test_loader, net, eps, args):
+def test_singel_proc(test_loader, loss, net, eps, args):
     net.eval()
     Acc_y = 0
     nb = 0
@@ -248,13 +239,9 @@ def test_singel_proc(test_loader, net, eps, args):
         X = Variable(X).to(device)
         Y = Variable(Y.squeeze()).to(device) 
         
-        if args['conservative'] == 'False':
-            loss = nn.CrossEntropyLoss()
-        elif args['conservative'] == 'marco':
-            loss = nn.NLLLoss()
-        if args['attack_type'] == 'FGSM':
+        if args.attack_type == 'FGSM':
             X = fgsm_attack(net, loss, X, Y, eps)
-        elif args['attack_type'] == 'BIM':
+        elif args.attack_type == 'BIM':
             X = BIM_attack(net, loss, X, Y, 0, eps, 1, iters=100)
         nb = nb + len(X)
 
@@ -275,14 +262,9 @@ def test_singel_proc(test_loader, net, eps, args):
 
 if __name__ == '__main__':
     args = get_args()
-    args = vars(args)
-    for k in args.keys():
-        hps[k] = args[k]
-        
-    path = 'imagenet_exps/finetune_' + str(args['lr']) + '/'
-    
-    print(path)
+    args.path = 'imagenet_exps/finetune_' + str(args.lr) + '/'  
+    args.input_shape=(224, 224)
+    print(args.path)
     #check_mkdir(path)
-    hps['path'] = path
-    main(hps)
+    main(args)
 
