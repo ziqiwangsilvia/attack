@@ -136,7 +136,7 @@ def gpu_process(gpu, args):
             args.eps = eps
             test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args)
             with open(args.path + 'tfimagenet_attack_result_all.txt', 'a') as f:
-                f.write('acc at eps %.5f: %.5f, %.5f\n' %(eps, test_acc_t1, test_acc_t5))    
+                f.write('acc at eps %.5f: %.5f, %.5f\n' %(args.eps, test_acc_t1, test_acc_t5))    
             
         return
 
