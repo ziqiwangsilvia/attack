@@ -5,16 +5,23 @@ Created on Fri Mar 19 11:45:53 2021
 
 @author: ziqi
 """
-
+import time
 import numpy as np
 import torch
 import torch.nn as nn
 import argparse
+
 from torch.autograd import Variable
 from network import Net, marco_softmax
 from torchvision.models.resnet import resnet18, resnet50
 from dataset import prepare_dataset, prepare_dataset_cifar100, Imagenette
+from imagenet_tfrecord import ImageNet_TFRecord
 from utils import str2bool, check_mkdir
+
+import torch.multiprocessing as mp
+import torch.backends.cudnn as cudnn
+from torch.nn.parallel import DistributedDataParallel as DDP
+from imagenet_finetune import accuracy, reduce_tensor, to_python_float, AverageMeter
 
 hps = {'train_all': True,
        'train_index': [0,1],
@@ -45,7 +52,11 @@ def get_args():
     parser.add_argument('--triangular', default=False, type=str2bool)
     parser.add_argument('--attack_type', default='FGSM', choices = ['FGSM', 'BIM'])
     parser.add_argument('--network', default='resnet50', choices=['vgg16', 'vgg19', 'resnet18', 'resnet50'])
-    parser.add_argument('--dataset', default='cifar100', choices=['cifar10', 'cifar100'])
+    parser.add_argument('--dataset', default='imagenet', choices=['imagenet', 'imagenette'])
+    parser.add_argument('data', metavar='DIR', nargs='*', help='path(s) to dataset',
+                        default='/tudelft.net/staff-bulk/ewi/insy/CV-DataSets/imagenet/tfrecords')
+    parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
+                        help='number of data loading workers per GPU (default: 2)')
     
     args = parser.parse_args()
 
@@ -58,14 +69,113 @@ def main(args):
     checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
     net.load_state_dict(checkpoint['state_dict'])
 
-    valset = Imagenette(mode='val', input_shape=hps['input_shape'])
-    valloader = torch.utils.data.DataLoader(valset, batch_size=args['test_batch_size'],
+    if args['dataset'] == 'imagenette':
+        valset = Imagenette(mode='val', input_shape=hps['input_shape'])
+        valloader = torch.utils.data.DataLoader(valset, batch_size=args['test_batch_size'],
                                          shuffle=False, num_workers=1)
+        for eps in np.arange(0,1.1,0.1):
+            test_acc_attack= test_singel_proc(valloader, net, eps, args)
+            with open(path + 'imagenette_attack_result_all.txt', 'a') as f:
+                f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
+    elif args['dataset'] == 'imagenet':
+        args.world_size = torch.cuda.device_count()
+        args.model = net
+        # start processes for all gpus
+        mp.spawn(gpu_process, nprocs=args.world_size, args=(args,))
+        
 
-    for eps in np.arange(0,1.1,0.1):
-        test_acc_attack= test(valloader, net, eps, args)
-        with open(path + 'attack_result_all.txt', 'a') as f:
-            f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
+def gpu_process(gpu, args):
+        # each gpu runs in a separate proces
+        torch.cuda.set_device(gpu)
+        torch.distributed.init_process_group(backend='nccl', init_method='env://',
+                                             rank=gpu, world_size=args.world_size)
+    
+        # Set cudnn to deterministic setting
+        if args.deterministic:
+            cudnn.benchmark = False
+            cudnn.deterministic = True
+            torch.manual_seed(gpu)
+            torch.set_printoptions(precision=10)
+    
+        # push model to gpu
+        model = args.model.cuda(gpu)
+    
+        # Scale learning rate based on global batch size
+        args.lr = args.lr*float(args.batch_size*args.world_size)/256.
+    
+        # Use DistributedDataParallel for distributed training
+        model = DDP(model, device_ids=[gpu], output_device=gpu)
+    
+        # define loss function (criterion) and optimizer
+        criterion = nn.NLLLoss().cuda(gpu)
+  
+        # Data loading code
+        valloader = ImageNet_TFRecord(args.data, 'val', args.batch_size, args.workers,
+                                       gpu, args.world_size, augment=False)
+    
+        # only evaluate model, no training
+        for eps in np.arange(0,1.1,0.1):
+            test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args, eps)
+            with open(path + 'tfimagenet_attack_result_all.txt', 'a') as f:
+                f.write('acc at eps %.5f: %.5f, %.5f\n' %(eps, test_acc_t1, test_acc_t5))    
+            
+        return
+
+def test_multi_proc(val_loader, model, criterion, gpu, args, eps):
+    batch_time = AverageMeter()
+    losses = AverageMeter()
+    top1 = AverageMeter()
+    top5 = AverageMeter()
+
+    # switch to evaluate mode
+    model.eval()
+
+    end = time.time()
+
+    for i, data in enumerate(val_loader):
+        input = data[0]["data"]
+        target = data[0]["label"].squeeze().cuda(gpu).long()
+        val_loader_len = int(val_loader._size / args.batch_size)
+
+        # compute output
+        with torch.no_grad():
+            if args['attack_type'] == 'FGSM':
+                X = fgsm_attack(model, criterion, input, target, eps)
+            elif args['attack_type'] == 'BIM':
+                X = BIM_attack(model, criterion, input, target, 0, eps, 1, iters=100)
+            output = model(X)
+            loss = criterion(torch.log(output), target)
+        
+        # measure accuracy and record loss
+        prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+        reduced_loss = reduce_tensor(loss.data, args.world_size)
+        prec1 = reduce_tensor(prec1, args.world_size)
+        prec5 = reduce_tensor(prec5, args.world_size)
+        losses.update(to_python_float(reduced_loss), input.size(0))
+        top1.update(to_python_float(prec1), input.size(0))
+        top5.update(to_python_float(prec5), input.size(0))
+
+        # measure elapsed time
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+        # TODO:  Change timings to mirror train().
+        if gpu == 0 and i % args.print_freq == 0:
+            print('Test: [{0}/{1}]\t'
+                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                  'Speed {2:.3f} ({3:.3f})\t'
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                  'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+                  'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                       i, val_loader_len,
+                       args.world_size * args.batch_size / batch_time.val,
+                       args.world_size * args.batch_size / batch_time.avg,
+                       batch_time=batch_time, loss=losses,
+                       top1=top1, top5=top5))
+
+    print(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1, top5=top5))
+
+    return [top1.avg, top5.avg]
 
 
 def fgsm_attack(model, loss, images, labels, eps) :
@@ -127,14 +237,11 @@ def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0) :
             
     return images
 
-def test(test_loader, net, eps, args):
+
+def test_singel_proc(test_loader, net, eps, args):
     net.eval()
     Acc_y = 0
     nb = 0
-# =============================================================================
-#     class_correct = list(0. for i in range(args['num_classes']))
-#     class_total = list(0. for i in range(args['num_classes']))
-# =============================================================================
     
     for i, data in enumerate(test_loader):
         X, Y = data 
@@ -156,27 +263,11 @@ def test(test_loader, net, eps, args):
         # print('test posterior:')
         # print(outputs.max(1)[0], outputs.max(1)[1])
         Acc_y = Acc_y + (predicted - Y).nonzero().size(0)
-# =============================================================================
-#         c = (predicted == Y).squeeze()
-#         for i in range(len(X)):
-#             label = Y[i]
-#             class_correct[label] += c[i].item()
-#             class_total[label] += 1
-# =============================================================================
 
   
     test_acc = (nb - Acc_y)/nb 
     print('Accuracy:', test_acc)
-    
-# =============================================================================
-#     for i in range(hps['num_classes']):
-#         print('at eps %.5f accuracy of %5s : %5f ' % (eps,
-#             classes[i], class_correct[i] / (1e-8 + class_total[i])))
-#         with open(path + 'attack_result_per_class.txt', 'a') as f:
-#             f.write('at eps %.5f accuracy of %5s : %5f \n' % (eps,
-#                 classes[i], class_correct[i] / (1e-8 + class_total[i])))
-#     #print("test acc: %.5f"%test_acc)
-# =============================================================================
+
     return test_acc
 
 
