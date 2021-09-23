@@ -157,16 +157,16 @@ def test_multi_proc(val_loader, model, criterion, gpu, args):
         val_loader_len = int(val_loader._size / args.test_batch_size)
 
         # compute output
-        with torch.no_grad():
-            if args.attack_type == 'FGSM':
-                X = fgsm_attack(model, criterion, input, target, args)
-            elif args.attack_type == 'BIM':
-                X = BIM_attack(model, criterion, input, target, 0, args.eps, 1, iters=100)
-            output = model(X)
-            if args.conservative == 'False':
-                loss = criterion(output. target)
-            elif args.conservative == 'marco':
-                loss = criterion(torch.log(output), target)
+
+        if args.attack_type == 'FGSM':
+            X = fgsm_attack(model, criterion, input, target, args)
+        elif args.attack_type == 'BIM':
+            X = BIM_attack(model, criterion, input, target, 0, args.eps, 1, iters=100)
+        output = model(X)
+        if args.conservative == 'False':
+            loss = criterion(output. target)
+        elif args.conservative == 'marco':
+            loss = criterion(torch.log(output), target)
         
         # measure accuracy and record loss
         prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
