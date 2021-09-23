@@ -83,8 +83,6 @@ def main(args):
         for i in range(args.world_size):
             print('{} : {}'.format(i, torch.cuda.get_device_name(i)))
     
-        # total batch size = batch size per gpu * ngpus
-        args.total_batch_size = args.world_size * args.batch_size
     
         # TODO: find out what this stuff does
         print("\nCUDNN VERSION: {}\n".format(torch.backends.cudnn.version()))
