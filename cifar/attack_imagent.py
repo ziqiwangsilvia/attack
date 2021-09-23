@@ -50,12 +50,6 @@ def get_args():
     return args
 
 def main(args):
-    net = resnet50(pretrained=False)
-    net = nn.Sequential(net, marco_softmax(1000))
-    checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
-    checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
-    net.load_state_dict(checkpoint['state_dict'])
-
 # =============================================================================
 #     if args.dataset == 'imagenette':
 #         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -91,8 +85,7 @@ def main(args):
     
         if not len(args.data):
             raise Exception("error: No data set provided")
-      
-        args.model = net
+     
         # start processes for all gpus
         mp.spawn(gpu_process, nprocs=args.world_size, args=(args,))
         
@@ -111,6 +104,11 @@ def gpu_process(gpu, args):
             torch.set_printoptions(precision=10)
     
         # push model to gpu
+        model = resnet50(pretrained=False)
+        model = nn.Sequential(model, marco_softmax(1000))
+        checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
+        checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
+        model.load_state_dict(checkpoint['state_dict'])
         model = args.model.cuda(gpu)
     
         # Scale learning rate based on global batch size
