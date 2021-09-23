@@ -44,11 +44,12 @@ class marco_softmax(nn.Module):
     def __init__(self, num_classes):
         super(marco_softmax, self).__init__()
         self.num_classes = num_classes
-        self.e = torch.eye(num_classes)
+        self.e = torch.eye(num_classes).to(device)
     def forward(self, input):        
         nu = []
         pos = []
         for i in range(self.num_classes):
+            print(self.e.device)
             nu.append(1/((input-self.e[i])**2).sum(1) + 1e-20)
         for i in range(self.num_classes):
             pos.append(nu[i]/sum(nu))

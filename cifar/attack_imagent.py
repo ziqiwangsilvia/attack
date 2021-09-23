@@ -56,6 +56,7 @@ def main(args):
     checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
     checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
     model.load_state_dict(checkpoint['state_dict'])
+
     if args.dataset == 'imagenette':
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         model.to(args.device)
@@ -98,7 +99,6 @@ def main(args):
 def gpu_process(gpu, args):
         # each gpu runs in a separate proces
         torch.cuda.set_device(gpu)
-        print(gpu)
         torch.distributed.init_process_group(backend='nccl', init_method='env://',
                                              rank=gpu, world_size=args.world_size)
         # Set cudnn to deterministic setting
@@ -191,7 +191,6 @@ def fgsm_attack(model, loss, images, labels, eps) :
     images = images
     labels = labels
     images.requires_grad = True
-            
     outputs = model(images)
 
     model.zero_grad()
