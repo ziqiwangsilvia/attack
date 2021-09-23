@@ -111,9 +111,6 @@ def gpu_process(gpu, args):
         # push model to gpu
         model = args.model.cuda(gpu)
     
-        # Scale learning rate based on global batch size
-        args.lr = args.lr*float(args.test_batch_size*args.world_size)/256.
-    
         # Use DistributedDataParallel for distributed training
         model = DDP(model, device_ids=[gpu], output_device=gpu)
     
