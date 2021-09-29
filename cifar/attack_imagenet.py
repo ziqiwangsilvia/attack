@@ -133,7 +133,7 @@ def gpu_process(gpu, args):
                                        gpu, args.world_size, augment=False)
     
         # only evaluate model, no training
-        for eps in np.arange(0,0.105,0.005):
+        for eps in np.arange(1e-4,1e-3,1e-5):
             args.eps = eps
             test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args)
             if gpu == 0:
