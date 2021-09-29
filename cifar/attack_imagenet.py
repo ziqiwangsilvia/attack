@@ -93,7 +93,9 @@ def main(args):
             raise Exception("error: No data set provided")
      
         # start processes for all gpus
-        mp.spawn(gpu_process, nprocs=args.world_size, args=(args,))
+        for eps in np.arange(1e-4,0.105,1e-5):
+            args.eps = eps
+            mp.spawn(gpu_process, nprocs=args.world_size, args=(args,))
         
 
 def gpu_process(gpu, args):
@@ -133,12 +135,11 @@ def gpu_process(gpu, args):
                                        gpu, args.world_size, augment=False)
     
         # only evaluate model, no training
-        for eps in np.arange(0,0.105,0.005):
-            args.eps = eps
-            test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args)
-            if gpu == 0:
-                with open(args.path + 'tfimagenet_%s_attack_result_all.txt'%(args.conservative), 'a') as f:
-                    f.write('acc at eps %.5f: %.5f, %.5f\n' %(eps, test_acc_t1, test_acc_t5))    
+       
+        test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args)
+        if gpu == 0:
+            with open(args.path + 'tfimagenet_%s_attack_result_all.txt'%(args.conservative), 'a') as f:
+                f.write('acc at eps %.5f: %.5f, %.5f\n' %(args.eps, test_acc_t1, test_acc_t5))    
             
         return
 
