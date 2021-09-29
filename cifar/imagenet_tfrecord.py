@@ -145,6 +145,6 @@ def ImageNet_TFRecord(root, split, batch_size, num_threads, device_id, num_gpus,
                             dali_cpu=dali_cpu)
     pipe.build()
 
-    dataloader = DALIClassificationIterator(pipelines=pipe, fill_last_batch=False,
+    dataloader = DALIClassificationIterator(pipelines=pipe, last_batch_policy = 'PARTIAL', last_batch_padded = True,
                                             size=(n_samples//num_gpus+1))
     return dataloader
