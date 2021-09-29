@@ -40,10 +40,8 @@ def get_args():
     parser.add_argument('--dataset', default='imagenet', choices=['imagenet', 'imagenette'])
     parser.add_argument('data', metavar='DIR', nargs='*', help='path(s) to dataset',
                         default='/tudelft.net/staff-bulk/ewi/insy/CV-DataSets/imagenet/tfrecords')
-    parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
-                        help='number of data loading workers per GPU (default: 2)')
-    parser.add_argument('--print_freq', '-p', default=10, type=int,
-                        metavar='N', help='print frequency (default: 10)')
+    parser.add_argument('-j', '--workers', default=2, type=int, metavar='N', help='number of data loading workers per GPU (default: 2)')
+    parser.add_argument('--print_freq', '-p', default=10, type=int, metavar='N', help='print frequency (default: 10)')
     parser.add_argument('--deterministic', action='store_true')
     
     args = parser.parse_args()
@@ -111,11 +109,14 @@ def gpu_process(gpu, args):
             torch.set_printoptions(precision=10)
     
         # push model to gpu
-        model = resnet50(pretrained=False)
-        model = nn.Sequential(model, marco_softmax(1000))
-        checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
-        checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
-        model.load_state_dict(checkpoint['state_dict'])
+        if args.conservative == 'False':
+            model = resnet50(pretrained=True)
+        elif args.conservative == 'marco':
+            model = resnet50(pretrained=False)
+            model = nn.Sequential(model, marco_softmax(1000))
+            checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
+            checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
+            model.load_state_dict(checkpoint['state_dict'])
         model = model.cuda(gpu)
     
         # Use DistributedDataParallel for distributed training
@@ -135,8 +136,9 @@ def gpu_process(gpu, args):
         for eps in np.arange(0,0.105,0.005):
             args.eps = eps
             test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args)
-            with open(args.path + 'tfimagenet_attack_result_all.txt', 'a') as f:
-                f.write('acc at eps %.5f: %.5f, %.5f\n' %(eps, test_acc_t1, test_acc_t5))    
+            if gpu == 0:
+                with open(args.path + 'tfimagenet_%s_attack_result_all.txt'%(args.conservative), 'a') as f:
+                    f.write('acc at eps %.5f: %.5f, %.5f\n' %(eps, test_acc_t1, test_acc_t5))    
             
         return
 
