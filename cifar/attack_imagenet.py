@@ -43,7 +43,7 @@ def get_args():
     parser.add_argument('-j', '--workers', default=2, type=int, metavar='N', help='number of data loading workers per GPU (default: 2)')
     parser.add_argument('--print_freq', '-p', default=10, type=int, metavar='N', help='print frequency (default: 10)')
     parser.add_argument('--deterministic', action='store_true')
-    
+    parser.add_argument('--eps', default= 0.3, type=float)
     args = parser.parse_args()
 
     return args
@@ -66,11 +66,11 @@ def main(args):
         valset = Imagenette(mode='val', input_shape=args.input_shape)
         valloader = torch.utils.data.DataLoader(valset, batch_size=args.test_batch_size,
                                          shuffle=False, num_workers=1)
-        for eps in np.arange(0,1.1,0.1):
+        for eps in np.arange(0,0.011,1e-3):
             args.eps = eps
             test_acc_attack= test_singel_proc(valloader, criterion, model, args)
             with open(args.path + 'imagenette_attack_result_all.txt', 'a') as f:
-                f.write('acc at eps %.5f: %.5f \n' %(eps, test_acc_attack))
+                f.write('acc at eps %.5f: %.5f \n' %(args.eps, test_acc_attack))
 
     elif args.dataset == 'imagenet':
         # set address for master process to localhost since we use a single node
@@ -93,6 +93,8 @@ def main(args):
             raise Exception("error: No data set provided")
      
         # start processes for all gpus
+	#for eps in np.arange(0.4,1.1,1e-1):
+	#   args.eps = eps
         mp.spawn(gpu_process, nprocs=args.world_size, args=(args,))
         
 
@@ -111,13 +113,15 @@ def gpu_process(gpu, args):
         # push model to gpu
         if args.conservative == 'False':
             model = resnet50(pretrained=True)
+            model = model.cuda(gpu)
         elif args.conservative == 'marco':
             model = resnet50(pretrained=False)
             model = nn.Sequential(model, marco_softmax(1000))
+            model = model.cuda(gpu)
             checkpoint = torch.load(args.path  + 'checkpoint.pth.tar')
             checkpoint['state_dict'] = {key.replace("module.", ""): value for key, value in checkpoint['state_dict'].items()}
             model.load_state_dict(checkpoint['state_dict'])
-        model = model.cuda(gpu)
+        
     
         # Use DistributedDataParallel for distributed training
         model = DDP(model, device_ids=[gpu], output_device=gpu)
@@ -133,13 +137,10 @@ def gpu_process(gpu, args):
                                        gpu, args.world_size, augment=False)
     
         # only evaluate model, no training
-        for eps in np.arange(1e-4,1e-3,1e-5):
-            args.eps = eps
-            test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args)
-            if gpu == 0:
-                with open(args.path + 'tfimagenet_%s_attack_result_all.txt'%(args.conservative), 'a') as f:
-                    f.write('acc at eps %.5f: %.5f, %.5f\n' %(eps, test_acc_t1, test_acc_t5))    
-            
+        test_acc_t1, test_acc_t5= test_multi_proc(valloader, model, criterion, gpu, args)
+        if gpu == 0:
+            with open(args.path + 'tfimagenet_%s_attack_result_all.txt'%(args.conservative), 'a') as f:
+                f.write('acc at eps %.5f: %.5f, %.5f\n' %(args.eps, test_acc_t1, test_acc_t5))               
         return
 
 def test_multi_proc(val_loader, model, criterion, gpu, args):
@@ -163,7 +164,7 @@ def test_multi_proc(val_loader, model, criterion, gpu, args):
         if args.attack_type == 'FGSM':
             X = fgsm_attack(model, criterion, input, target, args)
         elif args.attack_type == 'BIM':
-            X = BIM_attack(model, criterion, input, target, 0, args.eps, 1, iters=100)
+            X = BIM_attack(model, criterion, input, target, 0, args, 1, iters=10)
 
         output = model(X)
 
@@ -220,17 +221,17 @@ def fgsm_attack(model, loss, images, labels, args):
     attack_images = images + args.eps*images.grad.sign()    
     return attack_images
 
-def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0):
+def BIM_attack(model, loss, images, labels, scale, args, alpha, iters=0):
     images = images
     labels = labels
     clamp_max = 255
     
     if iters == 0 :
         # The paper said min(eps + 4, 1.25*eps) is used as iterations
-        iters = int(min(eps + 4, 1.25*eps))
+        iters = int(min(args.eps + 4, 1.25*args.eps))
                 
     if scale :
-        eps = eps / 255
+        args.eps = args.eps / 255
         clamp_max = clamp_max / 255
         
     for i in range(iters) :    
@@ -244,18 +245,18 @@ def BIM_attack(model, loss, images, labels, scale, eps, alpha, iters=0):
             cost = loss(torch.log(outputs), labels)
         cost.backward()
 
-        attack_images = images + (eps/iters)*images.grad.sign()
+        attack_images = images + (args.eps/iters)*images.grad.sign()
         
         # Clip attack images(X')
         # min{255, X+eps, max{0, X-eps, X'}}
         # = min{255, min{X+eps, max{max{0, X-eps}, X'}}}
         
         # a = max{0, X-eps}
-        a = torch.clamp(attack_images - eps, min=0)
+        a = torch.clamp(attack_images - args.eps, min=0)
         # b = max{a, X'}
         b = (attack_images>=a).float()*attack_images + (a>attack_images).float()*a
         # c = min{X+eps, b}
-        c = (b > attack_images+eps).float()*(attack_images+eps) + (attack_images+eps >= b).float()*b
+        c = (b > attack_images+args.eps).float()*(attack_images+args.eps) + (attack_images+args.eps >= b).float()*b
         # d = min{255, c}
         images = torch.clamp(c, max=clamp_max).detach_()
             
@@ -275,7 +276,7 @@ def test_singel_proc(test_loader, loss, net, args):
         if args.attack_type == 'FGSM':
             X = fgsm_attack(net, loss, X, Y, args)
         elif args.attack_type == 'BIM':
-            X = BIM_attack(net, loss, X, Y, 0, args.eps, 1, iters=100)
+            X = BIM_attack(net, loss, X, Y, 0, args, 1, iters=100)
         nb = nb + len(X)
 
         outputs = net(X)
