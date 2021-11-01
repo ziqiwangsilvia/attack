@@ -94,6 +94,8 @@ def ratio(loader, net):
     for data in loader:
         images, labels = data
         images.requires_grad = True
+        images.to(device)
+        labels.to(device)
 
         outputs, z = net(images)
 
