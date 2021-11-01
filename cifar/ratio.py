@@ -93,9 +93,10 @@ def ratio(loader, net):
     net.eval()
     for data in loader:
         images, labels = data
+        images = Variable(images).to(device)
+        labels = Variable(labels.squeeze()).to(device)
+
         images.requires_grad = True
-        images.to(device)
-        labels.to(device)
 
         outputs, z = net(images)
 
@@ -121,19 +122,19 @@ def ratio(loader, net):
         attacks = torch.cat(attacks)        
   
         ratio_image = attacks/margin_sub  
-        ratio.extend(ratio_image.detach().view(-1).numpy())
+        ratio.extend(ratio_image.detach().view(-1).cpu().numpy())
         
     return ratio
 
 def plot_ratio(ratio):
     fig, ax = plt.subplots()
-    plt.hist(ratio, bins=100, range = (0,1))
+    plt.hist(ratio, bins=50, range = (0,3))
     plt.xlabel('ratio', fontsize=20)
     ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     plt.xticks(fontsize=20)
-    plt.ylabel('Ours', fontsize=20)
+    plt.ylabel('Softmax', fontsize=20)
     plt.yticks(fontsize=20)
-    # plt.savefig('marco_l2_ratio_37.pdf', bbox_inches='tight')
+    plt.savefig('Softmax_cifar_ratio.pdf', bbox_inches='tight')
     
     
     
